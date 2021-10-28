@@ -92,18 +92,13 @@ pub contract Moments: NonFungibleToken {
     pub struct SetMetadata {
         // name of set
         pub let name: String
-
-        // unique ID per set
-        pub let setID: UInt64
-
         // series the set belongs to
         pub let seriesID: UInt64
 
-        init(setID: UInt64, seriesID: UInt64, name: String) {
+        init(name: String, seriesID: UInt64) {
             pre {
                 name.length > 0: "New Set name cannot be empty"
             }
-            self.setID = setID
             self.seriesID = seriesID
             self.name = name
         }
@@ -113,17 +108,40 @@ pub contract Moments: NonFungibleToken {
     pub struct SeriesMetadata {
         // name of the series
         pub let name: String
-        
-        // unique ID per series
-        pub let seriesID: UInt64
 
-        init(seriesID: UInt64, name: String) {
+        init(name: String) {
             pre {
                 name.length > 0: "New Series name cannot be empty"
             }
-            self.seriesID = seriesID
             self.name = name
         }
+    }
+
+    // Moment Metadata
+    // provies a wrapper to all the relevant data of a Moment
+    pub struct MomentMetadata {
+        pub let id: UInt64
+        pub let name: String
+        pub let description: String
+        pub let setID: UInt64
+        pub let setName: String
+        pub let seriesID: UInt64
+        pub let seriesName: String
+        pub let mediaType: String
+        pub let mediaHash: String
+        pub let mediaURI: String
+        init(id: UInt64, name: String, description: String, setID: UInt64, setName: String, seriesID: UInt64, seriesName: String, mediaType: String, mediaHash: String, mediaURI: String) {
+                self.id = id
+                self.name = name
+                self.description = description
+                self.setID = setID
+                self.setName = setName
+                self.seriesID = seriesID
+                self.seriesName = seriesName
+                self.mediaType = mediaType
+                self.mediaHash = mediaHash
+                self.mediaURI = mediaURI
+            }
     }
 
     // public creation for accounts to proxy from
@@ -167,6 +185,7 @@ pub contract Moments: NonFungibleToken {
     }
     pub resource interface ContentCreatorPublic {
         // getters
+        pub fun getMomentMetadata(moment: &Moments.NFT): MomentMetadata
         pub fun getContentMetadata(contentID: UInt64): ContentMetadata
         pub fun getSetMetadata(setID: UInt64): SetMetadata
         pub fun getSet(setID: UInt64): {UInt64: UInt64}
@@ -227,9 +246,9 @@ pub contract Moments: NonFungibleToken {
         }
         // createSeries
         //
-        pub fun createSeries(series: SeriesMetadata): UInt64 {
+        pub fun createSeries(name: String): UInt64 {
             let newID = self.newSeriesID
-            self.seriesMetadata[newID] = series       
+            self.seriesMetadata[newID] = SeriesMetadata(name: name)       
             self.newSeriesID = self.newSeriesID + (1 as UInt64)
             self.series[newID] = []
 
@@ -238,16 +257,16 @@ pub contract Moments: NonFungibleToken {
         }
         // createSet
         //
-        pub fun createSet(set: SetMetadata): UInt64 {
+        pub fun createSet(name: String, seriesID: UInt64): UInt64 {
             pre {
-                self.series[set.seriesID] != nil : "That set contains an invalid series"
+                self.series[seriesID] != nil : "That set contains an invalid series"
             }
             let newID = self.newSetID
-            self.setMetadata[newID] = set
+            self.setMetadata[newID] = SetMetadata(name: name, seriesID: seriesID)
             self.newSetID = self.newSetID + (1 as UInt64)
             self.sets[newID] = {}
             self.retiredSets[newID] = false
-            self.series[set.seriesID]!.append(newID)
+            self.series[seriesID]!.append(newID)
 
             emit SetCreated(setID: newID)
             return newID
@@ -266,6 +285,7 @@ pub contract Moments: NonFungibleToken {
             let set = self.sets[setID]!
             assert(set[contentID] == nil, message: "That ContentID is already used in this Set")            
             set[contentID] = 0
+            self.sets[setID] = set
             
             emit ContentEditionCreated(contentID: contentID, setID: setID)
             // DEVNOTE: There is a deliberate decision here to not track some specific value of "contentEdition" since
@@ -346,7 +366,6 @@ pub contract Moments: NonFungibleToken {
             let set = self.sets[setID]!
             let momentsMinted = set[contentID] ?? panic("Cannot mint Moment from this Set: This Content is not a part of that Set")
 
-
             // Mint the new moment
             let newMoment: @NFT <- create NFT(contentID: contentID,
                                               setID: setID,
@@ -375,7 +394,26 @@ pub contract Moments: NonFungibleToken {
 
         ////////
         // GETTERS AND SUGAR
-        //////// 
+        ////////
+        pub fun getMomentMetadata(moment: &Moments.NFT): MomentMetadata {
+            let contentData = self.contentMetadata[moment.contentID]!
+            let setData = self.setMetadata[moment.setID]!
+            let seriesData = self.seriesMetadata[setData.seriesID]!
+
+            let momentData = MomentMetadata(
+                id: moment.id,
+                name: contentData.name,
+                description: contentData.description,
+                setID: moment.setID,
+                setName: setData.name,
+                seriesID: setData.seriesID,
+                seriesName: seriesData.name,
+                mediaType: contentData.mediaType,
+                mediaHash: contentData.mediaHash,
+                mediaURI: contentData.mediaURI
+            )
+            return momentData
+        }
         pub fun getContentMetadata(contentID: UInt64): ContentMetadata {
             pre {
                 self.contentMetadata[contentID] != nil : "That contentID has no metadata associated with it"
@@ -663,17 +701,32 @@ pub contract Moments: NonFungibleToken {
     // fetch
     // Get a reference to a Moments from an account's Collection, if available.
     // If an account does not have a Moments.Collection, panic.
-    // If it has a collection but does not contain the itemID, return nil.
-    // If it has a collection and that collection contains the itemID, return a reference to that.
+    // If it has a collection but does not contain the momentID, return nil.
+    // If it has a collection and that collection contains the momentID, return a reference to that.
     //
-    pub fun fetch(_ from: Address, itemID: UInt64): &Moments.NFT? {
+    pub fun fetch(_ from: Address, momentID: UInt64): &Moments.NFT? {
         let collection = getAccount(from)
             .getCapability(Moments.CollectionPublicPath)
             .borrow<&Moments.Collection>()
             ?? panic("Couldn't get collection")
         // We trust Moments.Collection.borrowMoment to get the correct itemID
         // (it checks it before returning it).
-        return collection.borrowMoment(id: itemID)
+        return collection.borrowMoment(id: momentID)
+    }
+
+    // getMomentMetadata
+    // some sugar for the NFT-holder to get a full metadata set from the contract
+    //
+    pub fun getMomentMetadata(_ from: Address, momentID: UInt64): MomentMetadata {
+        let momentRef = self.fetch(from, momentID: momentID)!
+        let publicContent = Moments.account.getCapability<&{Moments.ContentCreatorPublic}>(Moments.ContentCreatorPublicPath).borrow() 
+            ?? panic("Could not get the public content from the contract")
+        let collectionRef = getAccount(from).getCapability<&{Moments.CollectionPublic}>(Moments.CollectionPublicPath).borrow()
+            ?? panic("Could not borrow CollectionPublic capability")
+        let moment = collectionRef.borrowMoment(id: momentID)
+            ?? panic("Could not find that Moment in your Collection")
+        let metadata = publicContent.getMomentMetadata(moment: momentRef)!
+        return metadata
     }
 
     // initializer

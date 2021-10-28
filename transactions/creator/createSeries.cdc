@@ -1,15 +1,13 @@
-import NonFungibleToken from "../contracts/standard/NonFungibleToken.cdc"
-import Moments from "../contracts/Moments.cdc"
+import NonFungibleToken from "../../contracts/standard/NonFungibleToken.cdc"
+import Moments from "../../contracts/Moments.cdc"
 
 transaction(seriesName: String) {
     prepare(signer: AuthAccount) {
-        let proxy = signer.borrow<&Moments.CreatorProxy>(Moments.CreatorProxyStoragePath)
+        let proxy = signer.borrow<&Moments.CreatorProxy>(from: Moments.CreatorProxyStoragePath)
             ?? panic("cannot get a valid creatorproxy resource for the signer")
         
-        let creator = proxy.borrowContentCreator()!
+        let creator = proxy.borrowContentCreator()
         
-        let series = Moments.SeriesMetadata(name: seriesName)
-
-        creator.createSeries(seriesMetadata: series)
+        creator.createSeries(name: seriesName)
     }
 }
