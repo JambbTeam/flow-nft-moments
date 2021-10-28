@@ -10,12 +10,12 @@ flow transactions send ./transactions/setupMoments.cdc \
   --signer emulator-account \
   --gas-limit 1000
 
-flow transactions send ./transactions/setupMomentsAdminProxy.cdc \
+flow transactions send ./transactions/setupAdminProxy.cdc \
   --network emulator \
   --signer emulator-account \
   --gas-limit 1000
 
-flow transactions send ./transactions/setupMomentsContentCreatorProxy.cdc \
+flow transactions send ./transactions/setupCreatorProxy.cdc \
   --network emulator \
   --signer emulator-account \
   --gas-limit 1000
@@ -27,12 +27,9 @@ flow transactions send ./transactions/activateAdminProxy.cdc <proxyReceiverAddre
   --network emulator \
   --signer emulator-account \
   --gas-limit 1000
-```
-
-## Mint Moments and Collectibles
-### they take arrays of strings as metadata for now
-```
-flow transactions send ./transactions/mintMoments.cdc <numToMint> <typeID> '["name","descrip","mediaType","mediaHash","mediaURI"]' --signer <admin-signer>
-
-flow transactions send ./transactions/mintCollectible.cdc '["name","descrip","mediaType","mediaHash","mediaURI"]' --signer <admin-signer>
+  
+flow transactions send ./transactions/activateCreatorProxy.cdc <proxyReceiverAddress> \
+  --network emulator \
+  --signer emulator-account \
+  --gas-limit 1000
 ```
