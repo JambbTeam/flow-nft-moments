@@ -684,7 +684,7 @@ pub contract Moments: NonFungibleToken {
         //
         pub fun revokeCreator(address: Address) {
             pre {
-                self.creators[address] != nil : "That proxy has never been registered"
+                self.creators[address] != nil : "That creator has never been registered"
             }
             self.creators[address] = false // naughty
         }
@@ -694,7 +694,7 @@ pub contract Moments: NonFungibleToken {
         //
         pub fun reinstateCreator(address: Address) {
             pre {
-                self.creators[address] != nil : "That proxy has never been registered"
+                self.creators[address] != nil : "That creator has never been registered"
             }
             self.creators[address] = true // good person
         }
@@ -704,9 +704,18 @@ pub contract Moments: NonFungibleToken {
         //
         pub fun revoked(address: Address): Bool {
             pre {
-                self.creators[address] != nil : "That proxy has never been registered"
+                self.creators[address] != nil : "That creator has never been registered"
             }
             return !self.creators[address]!
+        }
+
+        pub fun attributeCreator(address: Address, contentID: UInt64) {
+            pre {
+                self.creators[address] != nil: "That creator has never been registereD"
+            }
+            let cc = Moments.account.borrow<&Moments.ContentCreator>(from: Moments.ContentCreatorStoragePath)
+             ?? panic("NO CONTENT CREATOR! What'd you doooo")
+            cc.attribute(creator: address, contentID: contentID)
         }
     }
 
