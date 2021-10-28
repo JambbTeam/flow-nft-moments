@@ -57,7 +57,7 @@ pub contract Moments: NonFungibleToken {
     // Contract Owner Root Administrator Resource
     pub let AdministratorStoragePath: StoragePath
     pub let AdministratorPrivatePath: PrivatePath
-    pub let AdministratorPublicPath: PublicPath
+    pub let RevokerPublicPath: PublicPath
 
     // totalSupply
     // The total number of Moments that have been minted
@@ -172,7 +172,7 @@ pub contract Moments: NonFungibleToken {
             pre {
                 self.powerOfCreation!.check() : "Your CreatorProxy has no capabilities."
             }
-            let revoker = Moments.account.getCapability<&{Moments.AdministratorPublic}>(Moments.AdministratorPublicPath).borrow()
+            let revoker = Moments.account.getCapability<&{Moments.Revoker}>(Moments.RevokerPublicPath).borrow()
                 ?? panic("Can't find the revoker/admin!")
 
             if (revoker.revoked(address: self.owner!.address)) { panic("Creator privileges revoked") }
@@ -185,7 +185,7 @@ pub contract Moments: NonFungibleToken {
     }
     pub resource interface ContentCreatorPublic {
         // getters
-        pub fun getMomentMetadata(moment: &Moments.NFT): MomentMetadata
+        pub fun getMomentMetadata(momentID: UInt64): MomentMetadata
         pub fun getContentMetadata(contentID: UInt64): ContentMetadata
         pub fun getSetMetadata(setID: UInt64): SetMetadata
         pub fun getSet(setID: UInt64): {UInt64: UInt64}
@@ -196,7 +196,8 @@ pub contract Moments: NonFungibleToken {
     }
 
     pub resource ContentCreator: ContentCreatorPublic { 
-        // metadata maps
+        // metadata and id maps
+        access(self) let momentMetadata: {UInt64: MomentMetadata}
         access(self) let contentMetadata: {UInt64: ContentMetadata}
         access(self) let setMetadata: {UInt64: SetMetadata}
         access(self) let sets: {UInt64: {UInt64: UInt64}}
@@ -219,7 +220,8 @@ pub contract Moments: NonFungibleToken {
             self.sets = {}
             self.setMetadata = {}
             self.series = {}
-            self.seriesMetadata = {}            
+            self.seriesMetadata = {}
+            self.momentMetadata = {}          
 
             self.newContentID = 0
             self.newSetID = 0
@@ -374,6 +376,24 @@ pub contract Moments: NonFungibleToken {
             // Increment the count of Moments minted for this ContentEdition
             set[contentID] = momentsMinted + (1 as UInt64)
             self.sets[setID] = set
+            
+            let setMetadata = self.setMetadata[setID]!
+            let contentMetadata = self.contentMetadata[contentID]!
+            let seriesMetadata = self.seriesMetadata[setMetadata.seriesID]!
+
+            let momentMetadata = MomentMetadata(
+                id: newMoment.id,
+                name: contentMetadata.name,
+                description: contentMetadata.description,
+                setID: newMoment.setID,
+                setName: setMetadata.name,
+                seriesID: setMetadata.seriesID,
+                seriesName: seriesMetadata.name,
+                mediaType: contentMetadata.mediaType,
+                mediaHash: contentMetadata.mediaHash,
+                mediaURI: contentMetadata.mediaURI
+            )
+            self.momentMetadata[newMoment.id] = momentMetadata
             return <- newMoment
         }
 
@@ -391,28 +411,14 @@ pub contract Moments: NonFungibleToken {
             return <- newCollection
         }
         
-
         ////////
         // GETTERS AND SUGAR
         ////////
-        pub fun getMomentMetadata(moment: &Moments.NFT): MomentMetadata {
-            let contentData = self.contentMetadata[moment.contentID]!
-            let setData = self.setMetadata[moment.setID]!
-            let seriesData = self.seriesMetadata[setData.seriesID]!
-
-            let momentData = MomentMetadata(
-                id: moment.id,
-                name: contentData.name,
-                description: contentData.description,
-                setID: moment.setID,
-                setName: setData.name,
-                seriesID: setData.seriesID,
-                seriesName: seriesData.name,
-                mediaType: contentData.mediaType,
-                mediaHash: contentData.mediaHash,
-                mediaURI: contentData.mediaURI
-            )
-            return momentData
+        pub fun getMomentMetadata(momentID: UInt64): MomentMetadata {
+            pre {
+                self.momentMetadata[momentID] != nil : "That momentID has no metadata associated with it"
+            }
+            return self.momentMetadata[momentID]!
         }
         pub fun getContentMetadata(contentID: UInt64): ContentMetadata {
             pre {
@@ -486,6 +492,10 @@ pub contract Moments: NonFungibleToken {
             self.serialNumber = serialNumber
 
             emit MomentMinted(momentID: self.id, contentID: self.contentID, setID: self.setID, serialNumber: self.serialNumber)
+        }
+
+        pub fun getMomentMetadata(): MomentMetadata {
+            return Moments.getMomentMetadata(momentID: self.id)
         }
 
         destroy() {
@@ -644,13 +654,13 @@ pub contract Moments: NonFungibleToken {
         }
     }
 
-    pub resource interface AdministratorPublic {
+    pub resource interface Revoker {
         pub fun revoked(address: Address): Bool
     }
 
     /// Administrator
     /// Deployer-owned resource that Privately grants Capabilities to Proxies
-    pub resource Administrator: AdministratorPublic {
+    pub resource Administrator: Revoker {
         pub let creators: {Address: Bool}
 
         init () {
@@ -664,7 +674,7 @@ pub contract Moments: NonFungibleToken {
         pub fun registerCreator(address: Address) { 
             pre {
                 getAccount(address).getCapability<&{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath).check() : "Creator account does not have a valid Proxy"
-                //self.creators[address] != nil : "That creator has already been registered" // TODO: THIS WASNT WORKING
+                self.creators[address] == nil : "That creator has already been registered" // TODO: THIS WASNT WORKING
             }
             self.creators[address] = true // don't break the rules
         }
@@ -679,17 +689,19 @@ pub contract Moments: NonFungibleToken {
             self.creators[address] = false // naughty
         }
 
-        // activateCreator
-        //  - activate's a creatorproxy's ability to borrow its CC cap
-        //  - this is on when registered, hopefully this never needs to be called :)
+        // reinstateCreator
+        //  - hopefully this never needs to be called :)
         //
-        pub fun activateCreator(address: Address) {
+        pub fun reinstateCreator(address: Address) {
             pre {
                 self.creators[address] != nil : "That proxy has never been registered"
             }
             self.creators[address] = true // good person
         }
 
+        // revoked
+        //  - yes means no!
+        //
         pub fun revoked(address: Address): Bool {
             pre {
                 self.creators[address] != nil : "That proxy has never been registered"
@@ -706,9 +718,8 @@ pub contract Moments: NonFungibleToken {
     //
     pub fun fetch(_ from: Address, momentID: UInt64): &Moments.NFT? {
         let collection = getAccount(from)
-            .getCapability(Moments.CollectionPublicPath)
-            .borrow<&Moments.Collection>()
-            ?? panic("Couldn't get collection")
+            .getCapability<&{Moments.CollectionPublic}>(Moments.CollectionPublicPath)
+            .borrow() ?? panic("Couldn't get collection")
         // We trust Moments.Collection.borrowMoment to get the correct itemID
         // (it checks it before returning it).
         return collection.borrowMoment(id: momentID)
@@ -717,15 +728,11 @@ pub contract Moments: NonFungibleToken {
     // getMomentMetadata
     // some sugar for the NFT-holder to get a full metadata set from the contract
     //
-    pub fun getMomentMetadata(_ from: Address, momentID: UInt64): MomentMetadata {
-        let momentRef = self.fetch(from, momentID: momentID)!
+    pub fun getMomentMetadata(momentID: UInt64): MomentMetadata {
         let publicContent = Moments.account.getCapability<&{Moments.ContentCreatorPublic}>(Moments.ContentCreatorPublicPath).borrow() 
             ?? panic("Could not get the public content from the contract")
-        let collectionRef = getAccount(from).getCapability<&{Moments.CollectionPublic}>(Moments.CollectionPublicPath).borrow()
-            ?? panic("Could not borrow CollectionPublic capability")
-        let moment = collectionRef.borrowMoment(id: momentID)
-            ?? panic("Could not find that Moment in your Collection")
-        let metadata = publicContent.getMomentMetadata(moment: momentRef)!
+        
+        let metadata = publicContent.getMomentMetadata(momentID: momentID)!
         return metadata
     }
 
@@ -747,7 +754,7 @@ pub contract Moments: NonFungibleToken {
         // only one Administrator should ever exist, in deployer storage
         self.AdministratorStoragePath = /storage/jambbMomentsAdministrator
         self.AdministratorPrivatePath = /private/jambbMomentsAdministrator
-        self.AdministratorPublicPath = /public/jambbMomentsAdministrator
+        self.RevokerPublicPath = /public/jambbMomentsAdministrator
 
         self.AdminProxyStoragePath = /storage/jambbMomentsMomentsAdminProxy
         self.AdminProxyPublicPath = /public/jambbMomentsAdminProxy
@@ -760,7 +767,7 @@ pub contract Moments: NonFungibleToken {
         self.account.save(<- admin, to: self.AdministratorStoragePath)
         // Link it to provide shareable access route to capabilities
         self.account.link<&Moments.Administrator>(self.AdministratorPrivatePath, target: self.AdministratorStoragePath)
-        self.account.link<&{Moments.AdministratorPublic}>(self.AdministratorPublicPath, target: self.AdministratorStoragePath)
+        self.account.link<&{Moments.Revoker}>(self.RevokerPublicPath, target: self.AdministratorStoragePath)
         
 
         // Create a ContentCreator resource and save it to storage
