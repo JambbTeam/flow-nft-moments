@@ -740,7 +740,7 @@ pub contract Moments: NonFungibleToken {
     /// Administrator
     /// Deployer-owned resource that Privately grants Capabilities to Proxies
     pub resource Administrator: Revoker {
-        pub let creators: {Address: Capability<&{Moments.CreatorProxyPublic}>}
+        access(self) let creators: {Address: Capability<&{Moments.CreatorProxyPublic}>}
 
         init () {
             self.creators = {}
