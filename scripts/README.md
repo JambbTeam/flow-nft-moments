@@ -2,6 +2,7 @@
 
 ## Moments
 - `getMoments` expects a `[UInt64]` array, and returns the `MomentMetadata` for those ID's
+- `getMomentRun` expects a `UInt64` momentID and returns a `MomentRun` of how many have been minted with the rest of the `MomentMetadata`
 
 ### User Moments
 - `getUserMomentIDs` expects an `Address` and and returns a `[UInt64]` array of the ID's they own
@@ -17,4 +18,5 @@
 - `getSetMetadata`
 - `getSeriesMetadata`
 - `getContentMetadata` 
+- `getContentEditions` 
  

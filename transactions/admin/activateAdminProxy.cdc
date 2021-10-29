@@ -7,6 +7,7 @@ transaction(proxy: Address) {
         let client = proxyAcct.getCapability<&{Moments.AdminProxyPublic}>(Moments.AdminProxyPublicPath)
             .borrow()!
         let adminCap = admin.getCapability<&Moments.Administrator>(Moments.AdministratorPrivatePath)
+        
         client.addCapability(adminCap)
     }
 }
