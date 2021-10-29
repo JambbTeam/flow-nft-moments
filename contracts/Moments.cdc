@@ -15,7 +15,7 @@ pub contract Moments: NonFungibleToken {
     pub event SeriesCreated(seriesID: UInt64)
     pub event SetCreated(setID: UInt64)   
     pub event ContentCreated(contentID: UInt64)
-    pub event ContentEditionCreated(contentID: UInt64, setID: UInt64)
+    pub event ContentEditionCreated(contentID: UInt64, setID: UInt64, contentEdition: UInt64)
 
     // Emitted on Updates
     pub event ContentUpdated(contentID: UInt64)
@@ -309,7 +309,9 @@ pub contract Moments: NonFungibleToken {
             // register this as an edition of this content
             self.contentEditions[contentID]!.append(setID)
             
-            emit ContentEditionCreated(contentID: contentID, setID: setID)
+            let cE = self.contentEditions[contentID]!.length
+            
+            emit ContentEditionCreated(contentID: contentID, setID: setID, contentEdition: UInt64(cE))
         }
 
         ///////
