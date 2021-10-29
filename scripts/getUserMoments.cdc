@@ -7,8 +7,9 @@ pub fun main(address: Address, momentIDs: [UInt64]): [Moments.MomentMetadata] {
    
     var moments:[Moments.MomentMetadata] = []
     for id in momentIDs {
-        let metadata = Moments.getMomentMetadata(address, momentID:id)!
-        moments.append(metadata)
+        let moment = collectionRef.borrowMoment(id: id)!
+        let metadata = moment.getMomentMetadata()!
+        moments.append(metadata
     }
     return moments
 }

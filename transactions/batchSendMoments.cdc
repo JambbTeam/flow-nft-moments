@@ -2,7 +2,7 @@ import NonFungibleToken from "../contracts/standard/NonFungibleToken.cdc"
 import Moments from "../contracts/Moments.cdc"
 
 transaction(recipients: [Address], moments: {Address: [UInt64]}) {
-    let adminCollection: &Moments.Collection
+    let senderCollection: &Moments.Collection
     let recipientCollections: {Address: &{Moments.CollectionPublic}}
     prepare(signer: AuthAccount) {
         self.recipientCollections = {}
@@ -13,7 +13,7 @@ transaction(recipients: [Address], moments: {Address: [UInt64]}) {
         }
 
         // borrow a reference to the signer's NFT collection
-        self.adminCollection = signer.borrow<&Moments.Collection>(from: Moments.CollectionStoragePath)
+        self.senderCollection = signer.borrow<&Moments.Collection>(from: Moments.CollectionStoragePath)
             ?? panic("Could not borrow a reference to the signer's collection")
     }
 
@@ -22,8 +22,17 @@ transaction(recipients: [Address], moments: {Address: [UInt64]}) {
             if (moments[address] != nil) {
                 let moments = moments[address] as! [UInt64]
                 for reward in moments {
-                    self.recipientCollections[address]!.deposit(token: <- self.adminCollection.withdraw(withdrawID: reward))
+                    self.recipientCollections[address]!.deposit(token: <- self.senderCollection.withdraw(withdrawID: reward))
                 }
+            }
+        }
+        for address in recipients {
+            if let moments = moments[address] {
+                for moment in moments {
+                    self.recipientCollections[address]!.deposit(token: <- self.senderCollection.withdraw(withdrawID: moment)) 
+                }
+            } else {
+                panic("Could not get the rewards for an address")
             }
         }
     }

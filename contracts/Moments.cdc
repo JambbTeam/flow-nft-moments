@@ -9,7 +9,7 @@ pub contract Moments: NonFungibleToken {
     // Emitted when a new ContentCreator is initialized into the system
     pub event CreatorRegistered(creator: Address)
     // Emitted on Attribution
-    pub event CreatorAttributed(creator: Address, contentID: UInt64)
+    pub event CreatorAttributed(creator: Address, momentID: UInt64)
 
     // Emitted on Creation
     pub event SeriesCreated(seriesID: UInt64)
@@ -336,12 +336,12 @@ pub contract Moments: NonFungibleToken {
 
         // attribute
         //
-        access(contract) fun attribute(creator: Address, contentID: UInt64) {
+        access(contract) fun attribute(creator: Address, momentID: UInt64) {
             pre {
                 self.creators[creator] != nil : "That creator is unregistered or revoked"
             }
-            self.creators[creator]!.append(contentID)
-            emit CreatorAttributed(creator: creator, contentID: contentID)
+            self.creators[creator]!.append(momentID)
+            emit CreatorAttributed(creator: creator, momentID: momentID)
         }
         // registerCreator
         //
@@ -674,7 +674,7 @@ pub contract Moments: NonFungibleToken {
         pub fun registerCreator(address: Address) { 
             pre {
                 getAccount(address).getCapability<&{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath).check() : "Creator account does not have a valid Proxy"
-                self.creators[address] == nil : "That creator has already been registered" // TODO: THIS WASNT WORKING
+                self.creators[address] == nil : "That creator has already been registered"
             }
             self.creators[address] = true // don't break the rules
         }
@@ -709,13 +709,13 @@ pub contract Moments: NonFungibleToken {
             return !self.creators[address]!
         }
 
-        pub fun attributeCreator(address: Address, contentID: UInt64) {
+        pub fun attributeCreator(address: Address, momentID: UInt64) {
             pre {
                 self.creators[address] != nil: "That creator has never been registereD"
             }
             let cc = Moments.account.borrow<&Moments.ContentCreator>(from: Moments.ContentCreatorStoragePath)
              ?? panic("NO CONTENT CREATOR! What'd you doooo")
-            cc.attribute(creator: address, contentID: contentID)
+            cc.attribute(creator: address, momentID: momentID)
         }
     }
 

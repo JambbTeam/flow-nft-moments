@@ -1,15 +1,7 @@
-# Moments
-### Get Metadata from Moment
-```
-flow scripts execute ./scripts/getAllMoments.cdc <address>
+# Moments - Scripts
 
-flow scripts execute ./scripts/getMomentMetadata.cdc <address> <momentID>
-```
-
-# Collectibles
-### Get Metadata from Collectible
-```
-flow scripts execute ./scripts/getAllCollectibles.cdc <address>
-
-flow scripts execute ./scripts/getCollectibleMetadata.cdc <address> <collectibleID>
-```
+- `getMoments` expects a `[UInt64]` array, and returns the `MomentMetadata` for those ID's
+- `getUserMoments` expects a user address and returns a `[MomentData]` array
+- `getUserMomentIDs` expects an address and and returns a `[UInt64]` array
+- `getCreatorMomentIDs` expects an address and returns a `[UInt64]` array of that creatorProxy's attributed `[Moment.id]`
+- 
