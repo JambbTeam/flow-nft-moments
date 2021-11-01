@@ -8,7 +8,9 @@ transaction(contentMetadata: [String]) {
         
         let creator = proxy.borrowContentCreator()
         
-        let content = Moments.ContentMetadata(name: contentMetadata[0], description: contentMetadata[1], source: contentMetadata[2],
+        // NOTE: we pass id: 0 because we don't know what ID this content will have until it has been successfully
+        // added, so it will be replaced by the contract's contentcreator
+        let content = Moments.ContentMetadata(id: 0, name: contentMetadata[0], description: contentMetadata[1], source: contentMetadata[2],
                 mediaType: contentMetadata[3], mediaHash: contentMetadata[4], mediaURI: contentMetadata[5])
 
         creator.createContent(content: content)

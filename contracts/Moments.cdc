@@ -18,7 +18,8 @@ pub contract Moments: NonFungibleToken {
     pub event SeriesCreated(seriesID: UInt64)
     pub event SetCreated(setID: UInt64)   
     pub event ContentCreated(contentID: UInt64)
-    pub event ContentEditionCreated(contentID: UInt64, setID: UInt64, contentEdition: UInt64)
+    pub event ContentAddedToSeries(contentID: UInt64, seriesID: UInt64)
+    pub event ContentAddedToSet(contentID: UInt64, setID: UInt64, contentEdition: UInt64)
 
     // Emitted on Updates
     pub event ContentUpdated(contentID: UInt64)
@@ -93,7 +94,6 @@ pub contract Moments: NonFungibleToken {
             self.mediaURI = mediaURI
         }
     }
-
     
     // Series Metadata
     // provides a wrapper to all the relevant data of a Series
@@ -113,6 +113,30 @@ pub contract Moments: NonFungibleToken {
             self.contentIDs = []
         }
     }
+    // Set Metadata
+    //  - A Set is a grouping of contentIDs
+    pub struct SetMetadata {
+        pub let id: UInt64
+        // name of set
+        pub let name: String
+
+        // map of contentIDs to their current minting
+        pub(set) var contentEditions: {UInt64:UInt64}
+        
+        // moment ids in this set
+        pub(set) var momentIDs: [UInt64]
+        
+        init(id: UInt64, name: String) {
+            pre {
+                name.length > 0: "New Set name cannot be empty"
+            }
+            self.id = id
+            self.name = name
+            self.contentEditions = {}
+            self.momentIDs = []
+        }
+    }
+
 
     // Moment Metadata
     // provides a wrapper to all the relevant data of a Moment
@@ -120,13 +144,13 @@ pub contract Moments: NonFungibleToken {
         pub let id: UInt64
         pub let serialNumber: UInt64
         pub let contentID: UInt64
+        pub let contentEdition: UInt64
         pub let name: String
         pub let description: String
         pub let setID: UInt64
         pub let setName: String
         pub let seriesID: UInt64
         pub let seriesName: String
-        pub let contentEdition: UInt64
         pub let mediaType: String
         pub let mediaHash: String
         pub let mediaURI: String
@@ -151,30 +175,6 @@ pub contract Moments: NonFungibleToken {
         }
         
     }
-
-    // Set Metadata
-    //  - A Set is a grouping of MomentIDs and contentEditions
-    pub struct SetMetadata {
-        pub let id: UInt64
-        // name of set
-        pub let name: String
-        // moment ids in this set
-        pub(set) var momentIDs: [UInt64]
-        // contentEditions are {contentID:mintedCount}
-        pub(set) var contentEditions: {UInt64: UInt64}
-        
-
-        init(id: UInt64, name: String) {
-            pre {
-                name.length > 0: "New Set name cannot be empty"
-            }
-            self.id = id
-            self.name = name
-            self.momentIDs = []
-            self.contentEditions = {}
-        }
-    }
-
 
     // public creation for accounts to proxy from
     pub fun createCreatorProxy(): @CreatorProxy {
@@ -229,6 +229,10 @@ pub contract Moments: NonFungibleToken {
     pub resource ContentCreator: ContentCreatorPublic { 
         // content tracks contentID's to their respective ContentMetadata
         access(self) let content: {UInt64: ContentMetadata}
+
+        // editions tracks the setIDs in which a given piece of Content was minted
+        access(self) let editions: {UInt64: [UInt64]}
+
         // seriesMetadata tracks seriesID's to their respective SeriesMetadata
         // - Series contain an array of [Content]
         access(self) let series: {UInt64: SeriesMetadata}
@@ -239,18 +243,6 @@ pub contract Moments: NonFungibleToken {
         // moments tracks momentID's to their respective MomentMetadata
         //  -- MomentMetadata is the aggregate of {Series:Set:Content}
         access(self) let moments: {UInt64: MomentMetadata}
-        
-        // contentEditions tracks contentID's to an array of SetIDs that content has been
-        // editioned into as a Moment
-        access(self) let contentEditions: {UInt64: [UInt64]}
-        
-        // sets are represented by a dictionary of contentIDs to mintCounts
-        // so it is a mapping of setIDs to {contentID:mintCount}
-        //access(self) let sets: {UInt64: {UInt64: UInt64}}
-        
-        // series are represented by a dictionary of seriesIDs to an array of contentIDs
-        // to find the sets of a series, check contentEditions
-        //access(self) let series: {UInt64: [UInt64]}
         
         // protected incrementors for new things
         access(contract) var newContentID: UInt64
@@ -264,18 +256,11 @@ pub contract Moments: NonFungibleToken {
         access(self) let retiredSets: {UInt64: Bool}
 
         init() {
-            self.series = {}
             self.content = {}
-            self.contentEditions = {}
-            
+            self.editions = {}
+            self.series = {}
             self.sets = {}
-            self.moments = {}     
-
-            //self.seriesMetadata = {}    
-            //self.contentMetadata = {}
-            
-            //self.setMetadata = {}
-            
+            self.moments = {}
 
             self.newContentID = 1
             self.newSetID = 1
@@ -289,25 +274,9 @@ pub contract Moments: NonFungibleToken {
         // CREATION FUNCTIONS -> THESE ADD TO ROOT MOMENTS DATA
         //// These are the only mechanisms to create what Content can be minted from and how.
         ///////
-
-        // createSeries
-        //
-        pub fun createSeries(name: String): UInt64 {
-            // create the new metadata at the new ID
-            let newID = self.newSeriesID
-            self.series[newID] = SeriesMetadata(id: newID, name: name)
-
-            // increment and emit before giving back the new ID
-            self.newSeriesID = self.newSeriesID + (1 as UInt64)
-            emit SeriesCreated(seriesID: newID)
-            return newID
-        }
         // createContent
         // 
-        pub fun createContent(content: ContentMetadata, seriesID: UInt64): UInt64 {
-            pre {
-                self.series[seriesID] != nil : "That content contains an invalid series"
-            }
+        pub fun createContent(content: ContentMetadata): UInt64 {
             // create the new contentMetadata at the new ID
             let newID = self.newContentID
             // enforce orderly id's by recreating contentMetadata here            
@@ -318,19 +287,26 @@ pub contract Moments: NonFungibleToken {
                 mediaType: content.mediaType,
                 mediaHash: content.mediaHash,
                 mediaURI: content.mediaURI)
-
-           
-            self.content[newID] = newContentMetadata
             
-            // create the new contentEdition to track sets that use this content
-            self.contentEditions[newID] = []
-            
-            // add this content to the Series specified by the caller
-            self.series[seriesID]!.contentIDs.append(newID)
-
             // increment and emit before giving back the new ID
             self.newContentID = self.newContentID + (1 as UInt64)
+
+            self.editions[newID] = []
+            self.content[newID] = newContentMetadata
+
             emit ContentCreated(contentID: newID)
+            return newID
+        }
+        // createSeries
+        //
+        pub fun createSeries(name: String): UInt64 {
+            // create the new metadata at the new ID
+            let newID = self.newSeriesID
+            self.series[newID] = SeriesMetadata(id: newID, name: name)
+
+            // increment and emit before giving back the new ID
+            self.newSeriesID = self.newSeriesID + (1 as UInt64)
+            emit SeriesCreated(seriesID: newID)
             return newID
         }
         // createSet
@@ -348,59 +324,46 @@ pub contract Moments: NonFungibleToken {
             emit SetCreated(setID: newID)
             return newID
         }
-        // createContentEdition
-        // creates a Content reference in a given Set and Series, establishing an Edition to mint from
+        ////// CONTENT ADDERS //////
+        // Content must be represented within a given Series and Set before
+        // it can be minted into a Moment
+        ////////////////////////////
+
+        // addContentToSeries
+        // - Adds a given ContentID to a given series
         //
-        pub fun createContentEdition(contentID: UInt64, setID: UInt64, seriesID: UInt64) {
+        pub fun addContentToSeries(contentID: UInt64, seriesID: UInt64) {
+            pre {
+                self.content[contentID] != nil: "Cannot add the Content to Series: Content doesn't exist"
+                !self.series[seriesID]!.contentIDs.contains(contentID) : "That ContentID is already a part of that Series"
+            }
+            // add this content to the Series specified by the caller
+            self.series[seriesID]!.contentIDs.append(contentID)
+            
+            emit ContentAddedToSeries(contentID: contentID, seriesID: seriesID)
+        }
+
+        pub fun addContentToSet(contentID: UInt64, setID: UInt64) {
             pre {
                 self.content[contentID] != nil: "Cannot add the ContentEdition to Set: Content doesn't exist"
                 self.sets[setID] != nil: "Cannot add ContentEdition to Set: Set doesn't exist"
-                self.sets[seriesID] != nil: "Cannot add ContentEdition to Set: Series doesn't exist"
+                self.sets[setID]!.contentEditions[contentID] == nil : "That ContentID is already a part of that Set"
+                self.editions[contentID] != nil : "That edition already contains that ContentID"
                 !self.retiredSets[setID]!: "Cannot add ContentEdition to Set after it has been Retired"
+                
             }
-            let series = self.series[seriesID]!
-            assert(series.contentIDs[contentID] != nil, message: "That ContentID is not a part of that Series")
-            // get the set we want to add this content to and make sure that we arent duplicating
+            // add this content to the set to be minted from as a Moment
             let set = self.sets[setID]!
-            assert(set.contentEditions[contentID] == nil, message: "That ContentID is already used in this Set")            
-            
-            // establish the minting run of this contentID, aka the edition run
             set.contentEditions[contentID] = 0
-            
-            // update the set with the new content
+            // self.sets[setID]!.contentEditions[contentID] = 0 // NOTE: This does not work for some reason
+            // thus the 'set' variable used here to proxy this update
             self.sets[setID] = set
 
-            // register this as an edition of this content
-            self.contentEditions[contentID]!.append(setID)
-            
-            // since the contentEditions array stores the actual setID it is referenced in, we use
-            // the length of this array to determine the numerical edition value
-            let cE = self.contentEditions[contentID]!.length
-            emit ContentEditionCreated(contentID: contentID, setID: setID, contentEdition: UInt64(cE))
-        }
+            // establish the minting run of this contentID, aka the edition run
+            self.editions[contentID]!.append(setID)
 
-        ////// UPDATE & RETIRE //////
-
-        // updateContentMetadata
-        // NOTE: we allow the content to be updated in case host changes
-        // PRE: must exist, thus cannot bypass creation route
-        pub fun updateContentMetadata(contentID: UInt64, content: ContentMetadata) {     
-            pre {
-                self.content[contentID] != nil: "Cannot update that Content, it doesn't exist!"
-            }
-            self.content[contentID] = content
-
-            emit ContentUpdated(contentID: contentID)
-        }
-        // retireSet
-        //
-        pub fun retireSet(setID: UInt64) {
-            pre {
-                self.sets[setID] != nil: "Cannot retire that Set, it doesn't exist!"
-                !self.retiredSets[setID]!: "Cannot retire that Set, it already is retired!"
-            }
-            self.retiredSets[setID] = true
-            emit SetRetired(setID:setID)
+            let edition = self.editions[contentID]!.length
+            emit ContentAddedToSet(contentID: contentID, setID: setID, contentEdition: UInt64(edition))
         }
 
         ////// MINT //////
@@ -411,24 +374,16 @@ pub contract Moments: NonFungibleToken {
             pre {
                 self.content[contentID] != nil: "Cannot mint Moment: This Content doesn't exist."
                 self.sets[setID] != nil: "Cannot mint Moment from this Set: This Set does not exist."
-                self.series[seriesID] != nil: "Cannot mint Moment from this Series: the Series does not exist"    
+                self.sets[setID]!.contentEditions[contentID] != nil : "Cannot mint from this Set: it has no Edition of that Content to Mint from"
                 !self.retiredSets[setID]!: "Cannot mint Moment from this Set: This Set has been retired."
+                self.series[seriesID] != nil: "Cannot mint Moment from this Series: the Series does not exist"    
+                self.series[seriesID]!.contentIDs.contains(contentID) : "Cannot mint Moment from this Series: the Series does not exist not contain this Content"
             }
-            // get the series this is to be minted from and check that this contentID is valid
-            let series = self.series[seriesID]!
-            assert(series.contentIDs.contains(contentID), message: "Cannot mint Moment from this Series, the content does not exist")
-            
-            // get the set this is to be minted from and check that this contentID is valid to be minted from
-            let set = self.sets[setID]!
-            let momentsMinted = set.contentEditions[contentID] ?? panic("Cannot mint Moment from this Set: This Content is not a part of that Set")
-            // we're about to mint a new one, so increment this and use as serialNum
-            let serialNumber = momentsMinted + (1 as UInt64) 
-            // update the minting count for this set then update the set itself
-            set.contentEditions[contentID] = momentsMinted + (1 as UInt64)
-            self.sets[setID] = set
-            
-            // check the edition num of this content
-            let edition = self.contentEditions[contentID]!.length
+            // get the set from which this is being minted
+            let set = self.sets[setID]
+            // get the edition and serial number
+            let edition = self.editions[contentID]!.length
+            let serialNumber = set!.contentEditions[contentID]!
 
             // Mint the new moment
             let newMoment: @NFT <- create NFT(contentID: contentID,
@@ -460,6 +415,8 @@ pub contract Moments: NonFungibleToken {
             )
             // we use a 0 run here because the "currentRun" is already indicated
             // by the serialNumber. only fill out 'run' when it is 'complete'
+            
+            // store a metadata copy to lookup later
             self.moments[newMoment.id] = moment
             return <- newMoment
         }
@@ -478,8 +435,32 @@ pub contract Moments: NonFungibleToken {
             return <- newCollection
         }
 
-        ////// ADMIN-MANAGED ATTRIBUTION AND REGISTRATION //////
+        ////// UPDATE & RETIRE //////
 
+        // updateContentMetadata
+        // NOTE: we allow the content to be updated in case host changes
+        // PRE: must exist, thus cannot bypass creation route
+        pub fun updateContentMetadata(contentID: UInt64, content: ContentMetadata) {     
+            pre {
+                self.content[contentID] != nil: "Cannot update that Content, it doesn't exist!"
+            }
+            self.content[contentID] = content
+
+            emit ContentUpdated(contentID: contentID)
+        }
+        // retireSet
+        //
+        pub fun retireSet(setID: UInt64) {
+            pre {
+                self.sets[setID] != nil: "Cannot retire that Set, it doesn't exist!"
+                !self.retiredSets[setID]!: "Cannot retire that Set, it already is retired!"
+            }
+            self.retiredSets[setID] = true
+            emit SetRetired(setID:setID)
+        }
+
+        ////// ADMIN FUNCS //////
+        
         // attribute
         //
         access(contract) fun attribute(creator: Address, momentID: UInt64) {
@@ -530,9 +511,9 @@ pub contract Moments: NonFungibleToken {
         // responds with an array of SetID's that content can be found
         pub fun getContentEditions(contentID: UInt64): [UInt64] {
             pre {
-                self.contentEditions[contentID] != nil : "There are no editions of that content"
+                self.editions[contentID] != nil : "There are no editions of that content"
             }
-            return self.contentEditions[contentID]!
+            return self.editions[contentID]!
         }
         pub fun getSetMetadata(setID: UInt64): SetMetadata {
             pre {
