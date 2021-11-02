@@ -1,11 +1,29 @@
 # Moments.cdc
-### A Content Moment Contact
-#### Inspired by NBA TopShot
+## A Content Moment Contact
 
-### Implementation Overview
-#### Moments
+# Implementation Overview
+## Moments
 
-- WIP - will add this later
+**Moments**, as inspired by the popular dapp NBA TopShot, implement an NFT standard that revolves around Content that is served in Moments that are unique members of Sets and Series. Content editions are minted in batches of “Moment” NFT’s, with serial numbers, that share metadata and have a toggleable minting run.
+
+Within the contract, I’ve introduced the concept of a **ContentCreator**, which is a singleton resource in the contract-deployer’s account (akin to the Administrator) and it has taken over the rights to Mint from the Administrator, but with some added tools at its disposal. 
+
+The ContentCreator resource is responsible for _creating and managing the content_ that lives inside of the Moment NFTs. It uses a Proxy (cap/receiver) pattern to grant accounts the ability to operate on behalf of the ContentCreator. Which is to say, grant them the ability to create awesome content. Additionally, the CC is solely capable of updating the Metadata of the Content itself. This power is revocable by the Admin, but is designed to support extensible and updateable content over time rather than over-rotating into purist-decentraland and requiring all NFTs be minted with never-changing data. The vast majority of data is immutable in this contract, but the source **ContentMetadata** will be managed by the CC's to ensure a great viewing experience for their audience! The distribution and control of the NFT’s is still fully non-custodial and ID’s can never be changed, but if say a link goes bad or a creator posts malicious content - those can be updated and fixed on the fly with ease in this contract.
+
+The full process of minting a Moment involves the following steps: 
+(Key: italics means its a struct or data, bold means its a resource)
+1. A **CreatorProxy** account creates some _Content_ in the contract to be utilized by the NFTs.
+2. The **Creator** goes on to create a _Series_ from which that content was from.
+3. Then they create the _Set_, in which the _Content_ will be minted as a **Moment** and given a _contentEdition_.
+
+Which is to say... 
+
+_Content_ must be added to both a _Series_ and a _Set_ for it to be mintable as a **Moment**
+
+In the demo laid out below, I create 2 Series, 3 Sets, and add the Content to both, and show what Moments can then be minted accordingly.
+
+### Prior Design
+In the original design, we restricted Sets to _specific_ Series, they were dependents, however we have opened up that restriction and made the requirement only that Content be added distinctly to a given Set and Series combination in order to create a ContentEdition from which to mint Moments.
 
 ## Testing
 Note: Demo tx's written using Emulator accounts in Flow.json
