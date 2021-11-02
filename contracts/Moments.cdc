@@ -335,6 +335,7 @@ pub contract Moments: NonFungibleToken {
         pub fun addContentToSeries(contentID: UInt64, seriesID: UInt64) {
             pre {
                 self.content[contentID] != nil: "Cannot add the Content to Series: Content doesn't exist"
+                self.series[seriesID] != nil: "Cannot mint Moment from this Series: the Series does not exist"    
                 !self.series[seriesID]!.contentIDs.contains(contentID) : "That ContentID is already a part of that Series"
             }
             // add this content to the Series specified by the caller
