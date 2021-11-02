@@ -22,7 +22,6 @@ func main() {
 	g.TransactionFromFile("setupMoments").SignProposeAndPayAs("creator").RunPrintEventsFull()
 
 	//Add these if you want to stop to talk
-	fmt.Scanln()
 	fmt.Println("Let set up moment collections for service, user and creator")
 	g.TransactionFromFile("setupAdminProxy").SignProposeAndPayAsService().RunPrintEventsFull()
 	g.TransactionFromFile("setupCreatorProxy").SignProposeAndPayAs("creator").RunPrintEventsFull()
@@ -209,6 +208,7 @@ func main() {
 	g.TransactionFromFile("admin/attributeCreator").SignProposeAndPayAsService().AccountArgument("user").UInt64Argument(3).RunPrintEventsFull()
 	g.TransactionFromFile("admin/attributeCreator").SignProposeAndPayAsService().AccountArgument("creator").UInt64Argument(4).RunPrintEventsFull()
 
+	fmt.Scanln()
 	/*
 		# now lets look at some state…
 		flow scripts execute ./scripts/getAllUserMoments.cdc 0x01cf0e2f2f715450;

@@ -153,3 +153,9 @@ flow scripts execute ./scripts/addressHasMoment.cdc 0x179b6b1cb6755e31 1;
 
 # Looks good, ya!?
 ```
+
+## Unit tests
+install go
+install gotestsum `go get gotest.tools/gotestsum`
+`go mod tidy`
+`gotestsum -f testname --hide-summary output`
