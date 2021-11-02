@@ -39,31 +39,29 @@ flow transactions send ./transactions/admin/revokeCreator.cdc 0x179b6b1cb6755e31
 # you can re-run the above tx’s and observe they error, in that those states are already set
 
 # now he cant create
-flow transactions send ./transactions/creator/createContent.cdc "[\"one\", \"_\", \"_\", \"_\", \"_\", \"_\"]" --signer emulator-user;
+flow transactions send ./transactions/creator/createContent.cdc "[\"one\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-user;
 # that failed
 
 # now let’s create some content
-flow transactions send ./transactions/creator/createContent.cdc "[\"one\", \"_\", \"_\", \"_\", \"_\", \"_\"]" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"twoo\", \"_\", \"_\", \"_\", \"_\", \"_\"]" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"three\", \"_\", \"_\", \"_\", \"_\", \"_\"]" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"four\", \"_\", \"_\", \"_\", \"_\", \"_\"]" --signer emulator-creator;
-flow transactions send ./transactions/creator/createSeries.cdc "One" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"First Content\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"More Content\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"Additional Content\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"The Last Content... for now\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-creator;
+flow transactions send ./transactions/creator/createSeries.cdc "Amazing Stuff" --signer emulator-creator;
 
 # oops we misspelled on create
-flow transactions send ./transactions/creator/createSeries.cdc "Tfwo" --signer emulator-creator;
-
-
+flow transactions send ./transactions/creator/createSeries.cdc "Series Twfo" --signer emulator-creator;
 # try to fix it?
 # flow transactions send ./transactions/creator/updateSeries.cdc 2 "Two”
 # nope, this is not allowed, just make a new series since it has no content yet its worthless
 # once a series has content, its name is established and cannot be changed later
 # so just make the correct one and carry on!
-flow transactions send ./transactions/creator/createSeries.cdc "Two" --signer emulator-creator;
+flow transactions send ./transactions/creator/createSeries.cdc "Series Two" --signer emulator-creator;
 
 # lets make three Sets
-flow transactions send ./transactions/creator/createSet.cdc One --signer emulator-creator;
-flow transactions send ./transactions/creator/createSet.cdc Two --signer emulator-creator;
-flow transactions send ./transactions/creator/createSet.cdc Three --signer emulator-creator;
+flow transactions send ./transactions/creator/createSet.cdc "One Set" --signer emulator-creator;
+flow transactions send ./transactions/creator/createSet.cdc "Set Two" --signer emulator-creator;
+flow transactions send ./transactions/creator/createSet.cdc "FunSet: Both" --signer emulator-creator;
 
 # now we need to add the content to their respective Series
 flow transactions send ./transactions/creator/addContentToSeries.cdc 1 1 --signer emulator-creator;
