@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/bjartek/go-with-the-flow/v2/gwtf"
@@ -15,16 +16,23 @@ func main() {
 	g := gwtf.NewGoWithTheFlowInMemoryEmulator()
 
 	//setup vouchers and proxy for service account, it will act as admin
+	fmt.Println("Let set up moment collections for service, user and creator")
 	g.TransactionFromFile("setupMoments").SignProposeAndPayAsService().RunPrintEventsFull()
 	g.TransactionFromFile("setupMoments").SignProposeAndPayAs("user").RunPrintEventsFull()
 	g.TransactionFromFile("setupMoments").SignProposeAndPayAs("creator").RunPrintEventsFull()
 
+	//Add these if you want to stop to talk
+	fmt.Scanln()
+	fmt.Println("Let set up moment collections for service, user and creator")
 	g.TransactionFromFile("setupAdminProxy").SignProposeAndPayAsService().RunPrintEventsFull()
 	g.TransactionFromFile("setupCreatorProxy").SignProposeAndPayAs("creator").RunPrintEventsFull()
-	g.TransactionFromFile("admin/registerCreator").SignProposeAndPayAsService().AccountArgument("creator").RunPrintEventsFull()
 
 	//# set the emulator as an valid Admin via its Proxy (to test the proxy routes have no issue, these are less easily revoked)
-	//flow transactions send ./transactions/admin/activateAdminProxy.cdc 0xf8d6e0586b0a20c7; g.TransactionFromFile("admin/activateAdminproxy").SignProposeAndPayAsService().AccountArgument("service").RunPrintEventsFull() # test the admin proxy by registering a new creator with it, as itself flow transactions send ./transactions/admin/registerCreator.cdc 0x01cf0e2f2f715450; g.TransactionFromFile("admin/registerCreator").SignProposeAndPayAsService().AccountArgument("creator").RunPrintEventsFull()
+	//flow transactions send ./transactions/admin/activateAdminProxy.cdc 0xf8d6e0586b0a20c7;
+
+	g.TransactionFromFile("admin/activateAdminproxy").SignProposeAndPayAsService().AccountArgument("account").RunPrintEventsFull()
+	//	# test the admin proxy by registering a new creator with it, as itself flow transactions send ./transactions/admin/registerCreator.cdc 0x01cf0e2f2f715450;
+	g.TransactionFromFile("admin/registerCreator").SignProposeAndPayAsService().AccountArgument("creator").RunPrintEventsFull()
 
 	/*
 		# my user is gunna go rogue and i’ll make a mistake, then fix it
@@ -237,16 +245,14 @@ func main() {
 
 	flow transactions send ./transactions/sendMoment.cdc “0xf8d6e0586b0a20c7” 3 --signer emulator-creator: */
 
-	userAddressValue := cadence.BytesToAddress([]byte("0x179b6b1cb6755e31"))
-
+	userAddressValue := cadence.BytesToAddress(g.Account("user").Address().Bytes())
 	recipients := cadence.NewArray([]cadence.Value{userAddressValue})
-	//	35:		dict := cadence.NewDictionary([]cadence.KeyValuePair{{Key: cadence.NewString("foo"), Value: cadence.NewString("bar")}})
 	momentIds := cadence.NewArray([]cadence.Value{cadence.NewUInt64(1), cadence.NewUInt64(2)})
 
 	moments := cadence.NewDictionary([]cadence.KeyValuePair{{Key: userAddressValue, Value: momentIds}})
 
 	g.TransactionFromFile("batchSendMoments").SignProposeAndPayAs("creator").Argument(recipients).Argument(moments).RunPrintEventsFull()
-	g.TransactionFromFile("sendtMoment").SignProposeAndPayAs("creator").AccountArgument("account").UInt64Argument(3).RunPrintEventsFull()
+	g.TransactionFromFile("sendMoment").SignProposeAndPayAs("creator").AccountArgument("account").UInt64Argument(3).RunPrintEventsFull()
 
 	/*
 		# validate delivery
