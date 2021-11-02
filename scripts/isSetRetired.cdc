@@ -1,8 +1,9 @@
 import NonFungibleToken from "../contracts/standard/NonFungibleToken.cdc"
 import Moments from "../contracts/Moments.cdc"
 
-pub fun main(creator: Address): [UInt64] {
+// must specify revoker resource address to perform this lookup
+pub fun main(setId: UInt64): Bool {
     let cc = Moments.getContentCreator()
-   
-    return cc.getCreatorAttributions(address: creator)
+
+    return cc.isSetRetired(setID: setId)
 }

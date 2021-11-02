@@ -25,9 +25,35 @@
 			"address": "0xf8d6e0586b0a20c7",
 			"key": "84f82df6790f07b281adb5bbc848bd6298a2de67f94bdfac7a400d5a1b893de5"
 		},
-		"emulator-user1": {
+		"emulator-creator": {
 			"address": "0x01cf0e2f2f715450",
-			"key": "ece202e2a86612f82b8fa3197ba0319ed8e390e6ff666f07c93b4aef2c5d42a4" 
+			"keys": [
+				{
+					"type": "hex",
+					"index": 0,
+					"signatureAlgorithm": "ECDSA_P256",
+					"hashAlgorithm": "SHA3_256",
+					"context": {
+						"privateKey": "a69cbdde5a25f12fda04c86a590590af8b2109f2dfae3a5db2be82bc13964eec"
+					}
+				}
+			],
+			"chain": "flow-emulator"
+		},
+		"emulator-user": {
+			"address": "0x179b6b1cb6755e31",
+			"keys": [
+				{
+					"type": "hex",
+					"index": 0,
+					"signatureAlgorithm": "ECDSA_P256",
+					"hashAlgorithm": "SHA3_256",
+					"context": {
+						"privateKey": "5db363a5ce7097ee4b9cac0acde3f4beb4c04fedbf71d0f0b3605d67ceba7845"
+					}
+				}
+			],
+			"chain": "flow-emulator"
 		},
 		"testnet-account": {
 			"address": "0xe94a6e229293f196",

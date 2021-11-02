@@ -19,20 +19,12 @@ transaction(recipients: [Address], moments: {Address: [UInt64]}) {
 
     execute {
         for address in recipients {
-            if (moments[address] != nil) {
-                let moments = moments[address] as! [UInt64]
-                for reward in moments {
-                    self.recipientCollections[address]!.deposit(token: <- self.senderCollection.withdraw(withdrawID: reward))
-                }
-            }
-        }
-        for address in recipients {
             if let moments = moments[address] {
                 for moment in moments {
                     self.recipientCollections[address]!.deposit(token: <- self.senderCollection.withdraw(withdrawID: moment)) 
                 }
             } else {
-                panic("Could not get the rewards for an address")
+                panic("Could not get the moments to send an address")
             }
         }
     }

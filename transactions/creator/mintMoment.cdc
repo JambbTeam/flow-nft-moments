@@ -8,7 +8,7 @@ transaction(contentID: UInt64, setID: UInt64, seriesID: UInt64) {
         let receiver = signer.borrow<&{Moments.CollectionPublic}>(from: Moments.CollectionStoragePath)
             ?? panic("Cannot get a reference to the signer's Public Moments Collection")
 
-        let creator = proxy.borrowContentCreator()!
+        let creator = proxy.borrowContentCreator()
         
         receiver.deposit(token: <- creator.mintMoment(contentID: contentID, setID: setID, seriesID: seriesID))
     }

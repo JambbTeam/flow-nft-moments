@@ -7,6 +7,6 @@ transaction(creator: Address) {
             ?? panic("That user is not the Administrator of this contract, and we've told the authorities on you.")
         let adminCap = admin.getCapability<&Moments.Administrator>(Moments.AdministratorPrivatePath)
 
-        administrator.revokeCreator(address: creator, admin: adminCap)
+        administrator.revokeCreator(address: creator)
     }
 }

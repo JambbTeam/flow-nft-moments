@@ -9,7 +9,7 @@ pub fun main(address: Address): [Moments.MomentMetadata] {
    
     var moments:[Moments.MomentMetadata] = []
     for id in ids {
-        let metadata = Moments.getMomentMetadata(momentID:id)!
+        let metadata = Moments.getContentCreator().getMomentMetadata(momentID:id)!
         moments.append(metadata)
     }
     return moments

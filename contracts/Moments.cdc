@@ -355,8 +355,6 @@ pub contract Moments: NonFungibleToken {
             // add this content to the set to be minted from as a Moment
             let set = self.sets[setID]!
             set.contentEditions[contentID] = 0
-            // self.sets[setID]!.contentEditions[contentID] = 0 // NOTE: This does not work for some reason
-            // thus the 'set' variable used here to proxy this update
             self.sets[setID] = set
 
             // establish the minting run of this contentID, aka the edition run
@@ -377,13 +375,16 @@ pub contract Moments: NonFungibleToken {
                 self.sets[setID]!.contentEditions[contentID] != nil : "Cannot mint from this Set: it has no Edition of that Content to Mint from"
                 !self.retiredSets[setID]!: "Cannot mint Moment from this Set: This Set has been retired."
                 self.series[seriesID] != nil: "Cannot mint Moment from this Series: the Series does not exist"    
-                self.series[seriesID]!.contentIDs.contains(contentID) : "Cannot mint Moment from this Series: the Series does not exist not contain this Content"
+                self.series[seriesID]!.contentIDs.contains(contentID) : "Cannot mint Moment from this Series: the Series does not contain this Content"
             }
             // get the set from which this is being minted
-            let set = self.sets[setID]
+            let set = self.sets[setID]!
             // get the edition and serial number
-            let edition = self.editions[contentID]!.length
-            let serialNumber = set!.contentEditions[contentID]!
+            let edition = self.editions[setID]!.length
+            // increment the run of this content in the set itself
+            set.contentEditions[contentID] = set.contentEditions[contentID]! + (1 as UInt64)
+            let serialNumber = set.contentEditions[contentID]!
+            
 
             // Mint the new moment
             let newMoment: @NFT <- create NFT(contentID: contentID,
@@ -391,8 +392,9 @@ pub contract Moments: NonFungibleToken {
                                               seriesID: seriesID,
                                               contentEdition: UInt64(edition),
                                               serialNumber: serialNumber)
-            
-            let setMetadata = self.sets[setID]!
+            // replace this set with the updated version that knows this was just minted
+            self.sets[setID] = set
+            // get the other data it takes to create am oment
             let contentMetadata = self.content[contentID]!
             let seriesMetadata = self.series[seriesID]!
 
@@ -404,7 +406,7 @@ pub contract Moments: NonFungibleToken {
                 name: contentMetadata.name,
                 description: contentMetadata.description,
                 setID: newMoment.setID,
-                setName: setMetadata.name,
+                setName: set.name,
                 seriesID: seriesID,
                 seriesName: seriesMetadata.name,
                 mediaType: contentMetadata.mediaType,
@@ -440,13 +442,13 @@ pub contract Moments: NonFungibleToken {
         // updateContentMetadata
         // NOTE: we allow the content to be updated in case host changes
         // PRE: must exist, thus cannot bypass creation route
-        pub fun updateContentMetadata(contentID: UInt64, content: ContentMetadata) {     
+        pub fun updateContentMetadata(content: ContentMetadata) {     
             pre {
-                self.content[contentID] != nil: "Cannot update that Content, it doesn't exist!"
+                self.content[content.id] != nil: "Cannot update that Content, it doesn't exist!"
             }
-            self.content[contentID] = content
+            self.content[content.id] = content
 
-            emit ContentUpdated(contentID: contentID)
+            emit ContentUpdated(contentID: content.id)
         }
         // retireSet
         //
@@ -572,8 +574,8 @@ pub contract Moments: NonFungibleToken {
         }
 
         // sugar func
-        pub fun getMomentMetadata(): MomentMetadata {
-            return Moments.getMomentMetadata(momentID: self.id)
+        pub fun getMetadata(): MomentMetadata {
+            return Moments.getContentCreator().getMomentMetadata(momentID: self.id)
         }
 
         destroy() {
@@ -828,13 +830,13 @@ pub contract Moments: NonFungibleToken {
         return collection.borrowMoment(id: momentID)
     }
 
-    // getMomentMetadata
-    //   - easy route into metadata information
+    // getContentCreator
+    //   - easy route to the CC public path
     //
-    pub fun getMomentMetadata(momentID: UInt64): MomentMetadata {
+    pub fun getContentCreator(): &{Moments.ContentCreatorPublic} {
         let publicContent = Moments.account.getCapability<&{Moments.ContentCreatorPublic}>(Moments.ContentCreatorPublicPath).borrow() 
             ?? panic("Could not get the public content from the contract")
-        return publicContent.getMomentMetadata(momentID: momentID)!
+        return publicContent
     }
 
     // initializer

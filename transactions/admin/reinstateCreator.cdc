@@ -7,6 +7,6 @@ transaction(creator: Address) {
             ?? panic("That user is not the Administrator of this contract, and we've told the authorities on you.")
         let ccCap = admin.getCapability<&Moments.ContentCreator>(Moments.ContentCreatorPrivatePath)
 
-        administrator.reinstateCreator(address: creator, cc: ccCap)
+        administrator.reinstateCreator(address: creator)
     }
 }
