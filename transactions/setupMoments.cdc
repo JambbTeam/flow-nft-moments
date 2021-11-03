@@ -10,7 +10,7 @@ transaction {
 
             signer.save(<-collection, to: Moments.CollectionStoragePath)
 
-            signer.link<&{Moments.CollectionPublic, NonFungibleToken.Receiver}>(
+            signer.link<&Moments.Collection{Moments.CollectionPublic, NonFungibleToken.Receiver}>(
                 Moments.CollectionPublicPath,
                 target: Moments.CollectionStoragePath)
             }

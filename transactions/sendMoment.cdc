@@ -11,7 +11,7 @@ transaction(recipient: Address, withdrawID: UInt64) {
             ?? panic("Could not borrow a reference to the signer's collection")
 
         // borrow a public reference to the recipient collection
-        let depositRef = recipient.getCapability(Moments.CollectionPublicPath).borrow<&{Moments.CollectionPublic}>()
+        let depositRef = recipient.getCapability(Moments.CollectionPublicPath).borrow<&Moments.Collection{Moments.CollectionPublic}>()
             ?? panic("Could not borrow a reference to the recipient's collection")
 
         // withdraw the NFT from the signer's collection

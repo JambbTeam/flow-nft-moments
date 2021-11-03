@@ -126,7 +126,7 @@ flow scripts execute ./scripts/isSetRetired.cdc 2
 
 # and for good measure lets distribute these moments
 flow transactions send ./transactions/batchSendMoments.cdc "["0x179b6b1cb6755e31"]" "{0x179b6b1cb6755e31: [1,2]}" --signer emulator-creator;
-flow transactions send ./transactions/sendMoment.cdc “0xf8d6e0586b0a20c7” 3 --signer emulator-creator:
+flow transactions send ./transactions/sendMoment.cdc 0xf8d6e0586b0a20c7 3 --signer emulator-creator;
 # validate delivery
 flow scripts execute ./scripts/addressHasMoment.cdc 0xf8d6e0586b0a20c7 3;
 flow scripts execute ./scripts/addressHasMoment.cdc 0xf8d6e0586b0a20c7 2; # nope

@@ -204,7 +204,7 @@ pub contract Moments: NonFungibleToken {
             pre {
                 self.powerOfCreation!.check() : "Your CreatorProxy has no capabilities."
             }
-            let revoker = Moments.account.getCapability<&{Moments.Revoker}>(Moments.RevokerPublicPath).borrow()
+            let revoker = Moments.account.getCapability<&Moments.Administrator{Moments.Revoker}>(Moments.RevokerPublicPath).borrow()
                 ?? panic("Can't find the revoker/admin!")
 
             if (revoker.revoked(address: self.owner!.address)) { panic("Creator privileges revoked") }
@@ -754,11 +754,11 @@ pub contract Moments: NonFungibleToken {
         //
         pub fun registerCreator(address: Address, cc: Capability<&Moments.ContentCreator>) { 
             pre {
-                getAccount(address).getCapability<&{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath).check() : "Creator account does not have a valid Proxy"
+                getAccount(address).getCapability<&Moments.CreatorProxy{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath).check() : "Creator account does not have a valid Proxy"
                 self.creators[address] == nil : "That creator has already been registered"
                 cc.check(): "that contentcreator is invalid"
             }
-            let pCap = getAccount(address).getCapability<&{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath)
+            let pCap = getAccount(address).getCapability<&Moments.CreatorProxy{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath)
             let proxy = pCap.borrow() ?? panic("failed to borrow the creator's proxy")
             self.creators[address] = true // don't break the rules
             // this will register the proxy with the ContentCreator
@@ -824,7 +824,7 @@ pub contract Moments: NonFungibleToken {
     //
     pub fun fetch(_ from: Address, momentID: UInt64): &Moments.NFT? {
         let collection = getAccount(from)
-            .getCapability<&{Moments.CollectionPublic}>(Moments.CollectionPublicPath)
+            .getCapability<&Moments.Collection{Moments.CollectionPublic}>(Moments.CollectionPublicPath)
             .borrow() ?? panic("Couldn't get collection")
         // We trust Moments.Collection.borrowMoment to get the correct itemID
         // (it checks it before returning it).
@@ -835,7 +835,7 @@ pub contract Moments: NonFungibleToken {
     //   - easy route to the CC public path
     //
     pub fun getContentCreator(): &{Moments.ContentCreatorPublic} {
-        let publicContent = Moments.account.getCapability<&{Moments.ContentCreatorPublic}>(Moments.ContentCreatorPublicPath).borrow() 
+        let publicContent = Moments.account.getCapability<&Moments.ContentCreator{Moments.ContentCreatorPublic}>(Moments.ContentCreatorPublicPath).borrow() 
             ?? panic("Could not get the public content from the contract")
         return publicContent
     }
@@ -871,7 +871,7 @@ pub contract Moments: NonFungibleToken {
         self.account.save(<- admin, to: self.AdministratorStoragePath)
         // Link it to provide shareable access route to capabilities
         self.account.link<&Moments.Administrator>(self.AdministratorPrivatePath, target: self.AdministratorStoragePath)
-        self.account.link<&{Moments.Revoker}>(self.RevokerPublicPath, target: self.AdministratorStoragePath)
+        self.account.link<&Moments.Administrator{Moments.Revoker}>(self.RevokerPublicPath, target: self.AdministratorStoragePath)
         
 
         // Create a ContentCreator resource and save it to storage
@@ -879,12 +879,12 @@ pub contract Moments: NonFungibleToken {
         self.account.save(<- cc, to: self.ContentCreatorStoragePath)
         // Link it to provide shareable access route to capabilities
         self.account.link<&Moments.ContentCreator>(self.ContentCreatorPrivatePath, target: self.ContentCreatorStoragePath)
-        self.account.link<&{Moments.ContentCreatorPublic}>(self.ContentCreatorPublicPath, target: self.ContentCreatorStoragePath)
+        self.account.link<&Moments.ContentCreator{Moments.ContentCreatorPublic}>(self.ContentCreatorPublicPath, target: self.ContentCreatorStoragePath)
 
         // create a personal collection just in case contract ever holds Moments to distribute later etc
         let collection <- create Collection()
         self.account.save(<- collection, to: self.CollectionStoragePath)
-        self.account.link<&{Moments.CollectionPublic}>(self.CollectionPublicPath, target: self.CollectionStoragePath)
+        self.account.link<&Moments.Collection{Moments.CollectionPublic, NonFungibleToken.Receiver}>(self.CollectionPublicPath, target: self.CollectionStoragePath)
         
         emit ContractInitialized()
     }

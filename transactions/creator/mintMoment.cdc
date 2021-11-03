@@ -5,7 +5,7 @@ transaction(contentID: UInt64, setID: UInt64, seriesID: UInt64) {
     prepare(signer: AuthAccount) {
         let proxy = signer.borrow<&Moments.CreatorProxy>(from: Moments.CreatorProxyStoragePath)
             ?? panic("cannot get a valid creatorproxy resource for the signer")
-        let receiver = signer.borrow<&{Moments.CollectionPublic}>(from: Moments.CollectionStoragePath)
+        let receiver = signer.borrow<&Moments.Collection{Moments.CollectionPublic}>(from: Moments.CollectionStoragePath)
             ?? panic("Cannot get a reference to the signer's Public Moments Collection")
 
         let creator = proxy.borrowContentCreator()
