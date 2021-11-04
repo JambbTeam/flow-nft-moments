@@ -57,14 +57,14 @@ flow transactions send ./transactions/admin/revokeCreator.cdc 0x179b6b1cb6755e31
 # you can re-run the above tx’s and observe they error, in that those states are already set
 
 # now he cant create
-flow transactions send ./transactions/creator/createContent.cdc "[\"one\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-user;
+flow transactions send ./transactions/creator/createContent.cdc "[\"one\", \"\", \"\", \"\", \"\", \"\"]" "[]" --signer emulator-user;
 # that failed
 
 # now let’s create some content
-flow transactions send ./transactions/creator/createContent.cdc "[\"First Content\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"More Content\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"Additional Content\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"The Last Content... for now\", \"\", \"\", \"\", \"\", \"\"]" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"First Content\", \"\", \"\", \"\", \"\", \"\", \"\"]" "[]" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"More Content\", \"\", \"\", \"\", \"\", \"\", \"\"]" "[]" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"Additional Content\", \"\", \"\", \"\", \"\", \"\", \"\"]" "[]" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"The Last Content... for now\", \"\", \"\", \"\", \"\", \"\", \"\"]" "[]" --signer emulator-creator;
 flow transactions send ./transactions/creator/createSeries.cdc "Amazing Stuff" --signer emulator-creator;
 
 # oops we misspelled on create
@@ -121,19 +121,20 @@ flow transactions send ./transactions/creator/retireSet.cdc 2 --signer emulator-
 flow transactions send ./transactions/creator/mintMoment.cdc 2 2 1 --signer emulator-creator;
 flow transactions send ./transactions/creator/mintMoment.cdc 2 2 2 --signer emulator-creator;
 
-# oh hey we forgot, we are lazy-attributing at the moment, so tell the CC who actually made that content
-flow transactions send ./transactions/admin/attributeCreator.cdc 0x01cf0e2f2f715450 1;
-flow transactions send ./transactions/admin/attributeCreator.cdc 0x01cf0e2f2f715450 2;
-flow transactions send ./transactions/admin/attributeCreator.cdc 0x179b6b1cb6755e31 3; #misattribute on purpose
-flow transactions send ./transactions/admin/attributeCreator.cdc 0x01cf0e2f2f715450 4;
+# misattribute on purpose
+flow transactions send ./transactions/admin/addCreatorAttribution.cdc 0x179b6b1cb6755e31 3; 
+# lets fix that misattribution
+flow transactions send ./transactions/admin/removeCreatorAttribution.cdc 0x179b6b1cb6755e31 3;
+
+# we can check by content
+flow scripts execute ./scripts/getCreatorContentIDs.cdc 0x01cf0e2f2f715450;
+# or by moment
+flow scripts execute ./scripts/getCreatorMomentIDs.cdc 0x01cf0e2f2f715450;
+flow scripts execute ./scripts/getCreatorMomentIDs.cdc 0x179b6b1cb6755e31;
+
 
 # now lets look at some state…
 flow scripts execute ./scripts/getAllUserMoments.cdc 0x01cf0e2f2f715450;
-flow scripts execute ./scripts/getCreatorMomentIDs.cdc 0x01cf0e2f2f715450;
-flow scripts execute ./scripts/getCreatorMomentIDs.cdc 0x179b6b1cb6755e31;
-# NOTE: Attribution is ADDITIVE in this system, and can never be undone. 
-# You can nuke bad content, but you can’t detach an attribution
-# OPEN Q: Is this a bad design? Should it be unique? If so that may take reworking some things.
 
 # whats up with these sets and moments etc
 flow scripts execute ./scripts/getMoments.cdc “[1,2]”;
