@@ -1,7 +1,7 @@
 import NonFungibleToken from "../../contracts/standard/NonFungibleToken.cdc"
 import Moments from "../../contracts/Moments.cdc"
 
-transaction(contentID: contentID, contentMetadata: [String], credits: [String]) {
+transaction(contentID: UInt64, contentMetadata: [String], credits: {String:String}) {
     prepare(signer: AuthAccount) {
         let ccProxy = signer.borrow<&Moments.CreatorProxy>(from: Moments.CreatorProxyStoragePath)
             ?? panic("cannot get a valid creatorproxy resource for the signer")
@@ -15,13 +15,13 @@ transaction(contentID: contentID, contentMetadata: [String], credits: [String]) 
                 name: contentMetadata[0], 
                 description: contentMetadata[1], 
                 source: contentMetadata[2],
-                creator: signer.address,
+                creator: oldContent.creator,
                 credits: credits,
                 mediaType: contentMetadata[3], 
                 mediaHash: contentMetadata[4], 
                 mediaURI: contentMetadata[5],
                 previewImage: contentMetadata[6])
 
-        creator.updateContentMetadata(content:content, creator: ccProxy)
+        creator.updateContentMetadata(content: content, creatorProxy: ccProxy)
     }
 }

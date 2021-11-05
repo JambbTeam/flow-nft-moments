@@ -33,7 +33,8 @@ pub contract Moments: NonFungibleToken {
     pub event SetRetired(setID: UInt64)
 
     // Emitted when a Moment is minted
-    pub event MomentMinted(momentID: UInt64, contentID: UInt64, setID: UInt64, seriesID: UInt64, contentEdition: UInt64, serialNumber: UInt64)
+    pub event MomentMinted(momentID: UInt64, contentID: UInt64, contentEdition: UInt64, 
+                           serialNumber: UInt64, seriesID: UInt64, setID: UInt64)
 
     // Emitted when a Moment is destroyed
     pub event MomentDestroyed(momentID: UInt64)
@@ -79,7 +80,7 @@ pub contract Moments: NonFungibleToken {
         // creator address
         pub let creator: Address
         // performer names and other credits
-        pub let credits: [String]
+        pub let credits: {String: String}
         // MIME type: image/png, image/jpeg, video/mp4, audio/mpeg
         pub let mediaType: String 
         // IPFS storage hash
@@ -89,7 +90,7 @@ pub contract Moments: NonFungibleToken {
         // uri to a preview image
         pub let previewImage: String
 
-        init(id: UInt64, name: String, description: String, source: String, creator: Address, credits: [String], mediaType: String, mediaHash: String, mediaURI: String, previewImage: String) {
+        init(id: UInt64, name: String, description: String, source: String, creator: Address, credits: {String: String}, mediaType: String, mediaHash: String, mediaURI: String, previewImage: String) {
             self.id = id
             self.name = name
             self.description = description
@@ -107,26 +108,31 @@ pub contract Moments: NonFungibleToken {
     // provides a wrapper to all the relevant data of a Series
     pub struct SeriesMetadata {
         pub let id: UInt64
-        // name of the series
         pub let name: String
+        pub let art: String
+        pub let description: String
+        
         // content ids in the series
         pub(set) var contentIDs: [UInt64]
 
-        init(id: UInt64, name: String) {
+        init(id: UInt64, name: String, art: String, description: String) {
             pre {
                 name.length > 0: "New Series name cannot be empty"
             }
             self.id = id
             self.name = name
             self.contentIDs = []
+            self.art = art
+            self.description = description
         }
     }
     // Set Metadata
     //  - A Set is a grouping of contentIDs
     pub struct SetMetadata {
         pub let id: UInt64
-        // name of set
         pub let name: String
+        pub let art: String
+        pub let description: String
 
         // map of contentIDs to their current minting
         pub(set) var contentEditions: {UInt64:UInt64}
@@ -137,12 +143,14 @@ pub contract Moments: NonFungibleToken {
         // retired state of this set
         pub(set) var retired: Bool
         
-        init(id: UInt64, name: String) {
+        init(id: UInt64, name: String, art: String, description: String) {
             pre {
                 name.length > 0: "New Set name cannot be empty"
             }
             self.id = id
             self.name = name
+            self.art = art
+            self.description = description
             self.contentEditions = {}
             self.momentIDs = {}
             self.retired = false
@@ -153,41 +161,63 @@ pub contract Moments: NonFungibleToken {
     // Moment Metadata
     // provides a wrapper to all the relevant data of a Moment
     pub struct MomentMetadata {
+        // moment
         pub let id: UInt64
         pub let serialNumber: UInt64
+        // content
         pub let contentID: UInt64
         pub let contentEdition: UInt64
         pub let contentCreator: Address
-        pub let contentCredits: [String]
-        pub let name: String
-        pub let description: String
-        pub let setID: UInt64
-        pub let setName: String
-        pub let seriesID: UInt64
-        pub let seriesName: String
+        pub let contentCredits: {String: String}
+        pub let contentName: String
+        pub let contentDescription: String
         pub let mediaType: String
         pub let mediaHash: String
         pub let mediaURI: String
         pub let previewImage: String
-        pub(set) var run: UInt64
-        pub(set) var retired: Bool
-        init(id: UInt64, serialNumber: UInt64, contentID: UInt64, contentEdition: UInt64, contentCreator: Address, contentCredits: [String], name: String, description: String, setID: UInt64, setName: String, seriesID: UInt64, seriesName: String, mediaType: String, mediaHash: String, mediaURI: String, previewImage: String, run: UInt64, retired: Bool) {
+        // series
+        pub let seriesID: UInt64
+        pub let seriesName: String
+        pub let seriesArt: String
+        pub let seriesDescription: String
+        // set
+        pub let setID: UInt64
+        pub let setName: String
+        pub let setArt: String
+        pub let setDescription: String
+        pub let run: UInt64
+        pub let retired: Bool
+        init(id: UInt64, serialNumber: UInt64, 
+            contentID: UInt64, contentEdition: UInt64, contentCreator: Address, 
+            contentCredits: {String: String}, contentName: String, contentDescription: String, 
+            mediaType: String, mediaHash: String, mediaURI: String, previewImage: String, 
+            seriesID: UInt64, seriesName: String, seriesArt: String, seriesDescription: String,
+            setID: UInt64, setName: String, setArt: String, setDescription: String,
+            run: UInt64, retired: Bool) {
+            // moments
             self.id = id
             self.serialNumber = serialNumber
+            // content
             self.contentID = contentID
             self.contentEdition = contentEdition
             self.contentCreator = contentCreator
             self.contentCredits = contentCredits
-            self.name = name
-            self.description = description
-            self.setID = setID
-            self.setName = setName
-            self.seriesID = seriesID
-            self.seriesName = seriesName
+            self.contentName = contentName
+            self.contentDescription = contentDescription
             self.mediaType = mediaType
             self.mediaHash = mediaHash
             self.mediaURI = mediaURI
             self.previewImage = previewImage
+            // series
+            self.seriesID = seriesID
+            self.seriesName = seriesName
+            self.seriesArt = seriesArt
+            self.seriesDescription = seriesDescription
+            //set
+            self.setID = setID
+            self.setName = setName
+            self.setArt = setArt
+            self.setDescription = setDescription
             self.run = run
             self.retired = retired
         }   
@@ -246,6 +276,7 @@ pub contract Moments: NonFungibleToken {
     pub resource ContentCreator: ContentCreatorPublic {
         // stores an address of the people that create content and the id's they created
         access(self) let creators: {Address: [UInt64]}
+
         // content tracks contentID's to their respective ContentMetadata
         access(self) let content: {UInt64: ContentMetadata}
 
@@ -253,7 +284,6 @@ pub contract Moments: NonFungibleToken {
         access(self) let editions: {UInt64: [UInt64]}
 
         // seriesMetadata tracks seriesID's to their respective SeriesMetadata
-        // - Series contain an array of [Content]
         access(self) let series: {UInt64: SeriesMetadata}
         
         // sets tracks setID's to their respective SetMetadata
@@ -321,10 +351,10 @@ pub contract Moments: NonFungibleToken {
         }
         // createSeries
         //
-        pub fun createSeries(name: String): UInt64 {
+        pub fun createSeries(name: String, art: String, description: String): UInt64 {
             // create the new metadata at the new ID
             let newID = self.newSeriesID
-            self.series[newID] = SeriesMetadata(id: newID, name: name)
+            self.series[newID] = SeriesMetadata(id: newID, name: name, art: art, description: description)
 
             // increment and emit before giving back the new ID
             self.newSeriesID = self.newSeriesID + (1 as UInt64)
@@ -333,10 +363,10 @@ pub contract Moments: NonFungibleToken {
         }
         // createSet
         //
-        pub fun createSet(name: String): UInt64 {
+        pub fun createSet(name: String, art: String, description: String): UInt64 {
             // create the new setMetadata at the new ID
             let newID = self.newSetID
-            self.sets[newID] = SetMetadata(id: newID, name: name)
+            self.sets[newID] = SetMetadata(id: newID, name: name, art: art, description: description)
 
             // increment and emit before giving back the new ID
             self.newSetID = self.newSetID + (1 as UInt64)
@@ -388,7 +418,7 @@ pub contract Moments: NonFungibleToken {
 
         // mintMoment
         //
-        pub fun mintMoment(contentID: UInt64, setID: UInt64, seriesID: UInt64): @NFT {
+        pub fun mintMoment(contentID: UInt64, seriesID: UInt64, setID: UInt64, ): @NFT {
             pre {
                 self.content[contentID] != nil: "Cannot mint Moment: This Content doesn't exist."
                 self.sets[setID] != nil: "Cannot mint Moment from this Set: This Set does not exist."
@@ -400,45 +430,38 @@ pub contract Moments: NonFungibleToken {
             // get the set from which this is being minted
             let set = self.sets[setID]!
             // get the edition and serial number
-            let edition = self.editions[setID]!.length
+            let contentEditions = self.editions[contentID]!
+            var editionForMoment = 0
+            var findIndex = 0
+            for edition in contentEditions {
+                if (edition == setID) {
+                    editionForMoment = findIndex
+                    break;
+                }
+                findIndex = findIndex + 1
+            }
             // increment the run of this content in the set itself
             set.contentEditions[contentID] = set.contentEditions[contentID]! + (1 as UInt64)
             let serialNumber = set.contentEditions[contentID]!
 
             // Mint the new moment
             let newMoment: @NFT <- create NFT(contentID: contentID,
-                                              setID: setID,
+                                              contentEdition: UInt64(editionForMoment),
+                                              serialNumber: serialNumber,
                                               seriesID: seriesID,
-                                              contentEdition: UInt64(edition),
-                                              serialNumber: serialNumber)
+                                              setID: setID)
             // so that we can map content creator to set-based moments
             set.momentIDs[contentID] = newMoment.id
             // replace this set with the updated version that knows this was just minted
             self.sets[setID] = set
-            // get the other data it takes to create am oment
-            let contentMetadata = self.content[contentID]!
-            let seriesMetadata = self.series[seriesID]!
 
-            let moment = MomentMetadata(
-                id: newMoment.id,
-                serialNumber: newMoment.serialNumber,
-                contentID: newMoment.contentID,
+            let moment = self.makeMomentMetadata(
+                id: newMoment.id, 
+                contentID: contentID,
                 contentEdition: newMoment.contentEdition,
-                contentCreator: contentMetadata.creator,
-                contentCredits: contentMetadata.credits,
-                name: contentMetadata.name,
-                description: contentMetadata.description,
-                setID: newMoment.setID,
-                setName: set.name,
+                serialNumber: newMoment.serialNumber,
                 seriesID: seriesID,
-                seriesName: seriesMetadata.name,
-                mediaType: contentMetadata.mediaType,
-                mediaHash: contentMetadata.mediaHash,
-                mediaURI: contentMetadata.mediaURI,
-                previewImage: contentMetadata.previewImage,
-                run: newMoment.serialNumber,
-                retired: false,
-            )
+                setID: setID)
             
             // store a metadata copy to lookup later
             self.moments[newMoment.id] = moment
@@ -447,12 +470,12 @@ pub contract Moments: NonFungibleToken {
 
         // batchMintMoment
         //
-        pub fun batchMintMoment(contentID: UInt64, setID: UInt64, seriesID: UInt64, quantity: UInt64): @Collection {
+        pub fun batchMintMoment(contentID: UInt64, seriesID: UInt64, setID: UInt64, quantity: UInt64): @Collection {
             let newCollection <- create Collection()
 
             var i: UInt64 = 0
             while i < quantity {
-                newCollection.deposit(token: <-self.mintMoment(contentID: contentID, setID: setID, seriesID: seriesID))
+                newCollection.deposit(token: <-self.mintMoment(contentID: contentID, seriesID: seriesID, setID: setID))
                 i = i + (1 as UInt64)
             }
 
@@ -532,18 +555,18 @@ pub contract Moments: NonFungibleToken {
             pre {
                 self.creators[creator] != nil : "That creator is unregistered"
                 self.content[contentID] != nil : "That content does not exist"
-                !self.isCreatorRevoked(creator: creator) : "That creator's proxy has been revoked"
                 self.creators[creator]!.contains(contentID) : "That creator is not attributed to that content"
             }
             var findIndex:UInt64 = 0
-            for val in self.creators[creator]! {
-                if val != contentID {
-                    findIndex = findIndex + 1 as UInt64
+            for id in self.creators[creator]! {
+                if id == contentID {
+                    break;
                 }
+                findIndex = findIndex + 1 as UInt64
             }
             let removed = self.creators[creator]!.remove(at: findIndex)
             assert(removed == contentID, message: "The wrong content has been removed")
-            emit CreatorAttributionRemoved(creator: creator, contentID: contentID)
+            emit CreatorAttributionRemoved(creator: creator, contentID: removed)
         }
 
         // admin route to forcibly update contentMetadata
@@ -557,23 +580,65 @@ pub contract Moments: NonFungibleToken {
             emit ContentUpdated(contentID: content.id)
         }
         //////// GETTERS AND SUGAR ////////
-        
+        // makeMomentMetadata
+        // simple sugar around grabbing hydrated metadata
+        // -- arguably defeats the purpose of STORING metadata this way at all
+        // -- TODO : potential tech debt: remove need for storage of MomentMetadata, 
+        // -- -- -- -- fetch hydrated info per-getMomentsMetadata/caller
+        //
+        access(contract) fun makeMomentMetadata(id: UInt64, contentID: UInt64, contentEdition: UInt64, serialNumber: UInt64, seriesID: UInt64, setID: UInt64): MomentMetadata {
+            pre {
+                self.content[contentID] != nil : "That content does not exist"
+                self.series[seriesID] != nil : "That series does not exist"
+                self.sets[setID] != nil : "That set does not exist"
+                self.sets[setID]!.contentEditions[contentID] != nil : "That content is not a part of that set"
+            }
+            let content = self.content[contentID]!
+            let series = self.series[seriesID]!
+            let set = self.sets[setID]!
+            let moment = MomentMetadata(
+                id: id,
+                serialNumber: serialNumber,
+                contentID: contentID,
+                contentEdition: contentEdition,
+                contentCreator: content.creator,
+                contentCredits: content.credits,
+                contentName: content.name,
+                contentDescription: content.description,
+                mediaType: content.mediaType,
+                mediaHash: content.mediaHash,
+                mediaURI: content.mediaURI,
+                previewImage: content.previewImage,
+                seriesID: seriesID,
+                seriesName: series.name,
+                seriesArt: series.art,
+                seriesDescription: series.description,
+                setID: setID,
+                setName: set.name,
+                setArt: set.art,
+                setDescription: set.description,
+                run: set.contentEditions[contentID]!,
+                retired: false)
+            
+            return moment
+        }
         // getMomentMetadata
-        // - Adds complete & run to existing Metadata if the Set is retired
+        // - Always hydrates on pull
         //
         pub fun getMomentMetadata(momentID: UInt64): MomentMetadata {
             pre {
                 self.moments[momentID] != nil : "That momentID has no metadata associated with it"
             }
-            
-            var moment = self.moments[momentID]!
-            let set = self.sets[moment.setID]!
-            
-            // pull current run/retired state from the resource before returning to getter
-            moment.run = set.contentEditions[moment.contentID]!
-            moment.retired = set.retired
+            let lastFetch = self.moments[momentID]!
+            let freshMoment = self.makeMomentMetadata(
+                id: momentID,
+                contentID: lastFetch.contentID, 
+                contentEdition: lastFetch.contentEdition, 
+                serialNumber: lastFetch.serialNumber,
+                seriesID: lastFetch.seriesID,
+                setID: lastFetch.setID)
 
-            return moment
+            return freshMoment
         }
         pub fun getContentMetadata(contentID: UInt64): ContentMetadata {
             pre {
@@ -620,28 +685,29 @@ pub contract Moments: NonFungibleToken {
     pub resource NFT: NonFungibleToken.INFT {
         // The token's ID per NFT standard
         pub let id: UInt64
+        // The place in the Edition that this Moment was minted
+        pub let serialNumber: UInt64
         // The ID of the Content that the Moment references
         pub let contentID: UInt64
         // the edition of the content this Moment references
         pub let contentEdition: UInt64
-        // The ID of the Set that the Moment comes from
-        pub let setID: UInt64
         // The ID of the Series that the Moment comes from
         pub let seriesID: UInt64 
-        // The place in the Edition that this Moment was minted
-        pub let serialNumber: UInt64
+        // The ID of the Set that the Moment comes from
+        pub let setID: UInt64
+        
+        
 
-        init(contentID: UInt64, setID: UInt64, seriesID: UInt64, contentEdition: UInt64, serialNumber: UInt64) {
+        init(contentID: UInt64, contentEdition: UInt64, serialNumber: UInt64, seriesID: UInt64, setID: UInt64, ) {
             Moments.totalSupply = Moments.totalSupply + (1 as UInt64)
             self.id = Moments.totalSupply
-            
             self.contentID = contentID
-            self.setID = setID
-            self.seriesID = seriesID
             self.contentEdition = contentEdition
             self.serialNumber = serialNumber
+            self.seriesID = seriesID
+            self.setID = setID
 
-            emit MomentMinted(momentID: self.id, contentID: self.contentID, setID: self.setID, seriesID: self.seriesID, contentEdition: self.contentEdition, serialNumber: self.serialNumber)
+            emit MomentMinted(momentID: self.id, contentID: self.contentID, contentEdition: self.contentEdition, serialNumber: self.serialNumber, seriesID: self.seriesID, setID: self.setID)
         }
 
         // sugar func
