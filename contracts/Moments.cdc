@@ -10,19 +10,19 @@ pub contract Moments: NonFungibleToken {
     pub event CreatorRegistered(creator: Address)
     pub event CreatorRevoked(creator: Address)
     pub event CreatorReinstated(creator: Address)
-
-    // Emitted on Attribution
-    pub event CreatorAttributed(creator: Address, momentID: UInt64)
+    pub event CreatorAttributed(creator: Address, contentID: UInt64)
+    pub event CreatorAttributionRemoved(creator: Address, contentID: UInt64)
 
     // Emitted on Creation
+    pub event ContentCreated(contentID: UInt64, creator: Address)
     pub event SeriesCreated(seriesID: UInt64)
     pub event SetCreated(setID: UInt64)   
-    pub event ContentCreated(contentID: UInt64)
     pub event ContentAddedToSeries(contentID: UInt64, seriesID: UInt64)
     pub event ContentAddedToSet(contentID: UInt64, setID: UInt64, contentEdition: UInt64)
 
     // Emitted on Updates
     pub event ContentUpdated(contentID: UInt64)
+
     pub event SetUpdated(setID: UInt64)
     pub event SeriesUpdated(seriesID: UInt64)
 
@@ -33,7 +33,8 @@ pub contract Moments: NonFungibleToken {
     pub event SetRetired(setID: UInt64)
 
     // Emitted when a Moment is minted
-    pub event MomentMinted(momentID: UInt64, contentID: UInt64, setID: UInt64, seriesID: UInt64, contentEdition: UInt64, serialNumber: UInt64)
+    pub event MomentMinted(momentID: UInt64, contentID: UInt64, contentEdition: UInt64, 
+                           serialNumber: UInt64, seriesID: UInt64, setID: UInt64)
 
     // Emitted when a Moment is destroyed
     pub event MomentDestroyed(momentID: UInt64)
@@ -74,24 +75,32 @@ pub contract Moments: NonFungibleToken {
         pub let id: UInt64
         pub let name: String
         pub let description: String
-
         // descriptor of the source of the content came from
         pub let source: String
+        // creator address
+        pub let creator: Address
+        // performer names and other credits
+        pub let credits: {String: String}
         // MIME type: image/png, image/jpeg, video/mp4, audio/mpeg
         pub let mediaType: String 
         // IPFS storage hash
         pub let mediaHash: String
         // URI to NFT media - incase IPFS not in use/avail
         pub let mediaURI: String
+        // uri to a preview image
+        pub let previewImage: String
 
-        init(id: UInt64, name: String, description: String, source: String, mediaType: String, mediaHash: String, mediaURI: String) {
+        init(id: UInt64, name: String, description: String, source: String, creator: Address, credits: {String: String}, mediaType: String, mediaHash: String, mediaURI: String, previewImage: String) {
             self.id = id
             self.name = name
             self.description = description
             self.source = source
+            self.creator = creator
+            self.credits = credits
             self.mediaType = mediaType
             self.mediaHash = mediaHash
             self.mediaURI = mediaURI
+            self.previewImage = previewImage
         }
     }
     
@@ -99,41 +108,52 @@ pub contract Moments: NonFungibleToken {
     // provides a wrapper to all the relevant data of a Series
     pub struct SeriesMetadata {
         pub let id: UInt64
-        // name of the series
         pub let name: String
+        pub let art: String
+        pub let description: String
+        
         // content ids in the series
         pub(set) var contentIDs: [UInt64]
 
-        init(id: UInt64, name: String) {
+        init(id: UInt64, name: String, art: String, description: String) {
             pre {
                 name.length > 0: "New Series name cannot be empty"
             }
             self.id = id
             self.name = name
             self.contentIDs = []
+            self.art = art
+            self.description = description
         }
     }
     // Set Metadata
     //  - A Set is a grouping of contentIDs
     pub struct SetMetadata {
         pub let id: UInt64
-        // name of set
         pub let name: String
+        pub let art: String
+        pub let description: String
 
         // map of contentIDs to their current minting
         pub(set) var contentEditions: {UInt64:UInt64}
         
-        // moment ids in this set
-        pub(set) var momentIDs: [UInt64]
+        // map of contentIDs to their moment ids in this set
+        pub(set) var momentIDs: {UInt64:UInt64}
+
+        // retired state of this set
+        pub(set) var retired: Bool
         
-        init(id: UInt64, name: String) {
+        init(id: UInt64, name: String, art: String, description: String) {
             pre {
                 name.length > 0: "New Set name cannot be empty"
             }
             self.id = id
             self.name = name
+            self.art = art
+            self.description = description
             self.contentEditions = {}
-            self.momentIDs = []
+            self.momentIDs = {}
+            self.retired = false
         }
     }
 
@@ -141,39 +161,66 @@ pub contract Moments: NonFungibleToken {
     // Moment Metadata
     // provides a wrapper to all the relevant data of a Moment
     pub struct MomentMetadata {
+        // moment
         pub let id: UInt64
         pub let serialNumber: UInt64
+        // content
         pub let contentID: UInt64
         pub let contentEdition: UInt64
-        pub let name: String
-        pub let description: String
-        pub let setID: UInt64
-        pub let setName: String
-        pub let seriesID: UInt64
-        pub let seriesName: String
+        pub let contentCreator: Address
+        pub let contentCredits: {String: String}
+        pub let contentName: String
+        pub let contentDescription: String
         pub let mediaType: String
         pub let mediaHash: String
         pub let mediaURI: String
-        pub(set) var complete: Bool
-        pub(set) var run: UInt64
-        init(id: UInt64, serialNumber: UInt64, contentID: UInt64, contentEdition: UInt64, name: String, description: String, setID: UInt64, setName: String, seriesID: UInt64, seriesName: String, mediaType: String, mediaHash: String, mediaURI: String, complete: Bool, run: UInt64) {
+        pub let previewImage: String
+        // series
+        pub let seriesID: UInt64
+        pub let seriesName: String
+        pub let seriesArt: String
+        pub let seriesDescription: String
+        // set
+        pub let setID: UInt64
+        pub let setName: String
+        pub let setArt: String
+        pub let setDescription: String
+        pub let run: UInt64
+        pub let retired: Bool
+        init(id: UInt64, serialNumber: UInt64, 
+            contentID: UInt64, contentEdition: UInt64, contentCreator: Address, 
+            contentCredits: {String: String}, contentName: String, contentDescription: String, 
+            mediaType: String, mediaHash: String, mediaURI: String, previewImage: String, 
+            seriesID: UInt64, seriesName: String, seriesArt: String, seriesDescription: String,
+            setID: UInt64, setName: String, setArt: String, setDescription: String,
+            run: UInt64, retired: Bool) {
+            // moments
             self.id = id
             self.serialNumber = serialNumber
+            // content
             self.contentID = contentID
             self.contentEdition = contentEdition
-            self.name = name
-            self.description = description
-            self.setID = setID
-            self.setName = setName
-            self.seriesID = seriesID
-            self.seriesName = seriesName
+            self.contentCreator = contentCreator
+            self.contentCredits = contentCredits
+            self.contentName = contentName
+            self.contentDescription = contentDescription
             self.mediaType = mediaType
             self.mediaHash = mediaHash
             self.mediaURI = mediaURI
-            self.complete = complete
+            self.previewImage = previewImage
+            // series
+            self.seriesID = seriesID
+            self.seriesName = seriesName
+            self.seriesArt = seriesArt
+            self.seriesDescription = seriesDescription
+            //set
+            self.setID = setID
+            self.setName = setName
+            self.setArt = setArt
+            self.setDescription = setDescription
             self.run = run
-        }
-        
+            self.retired = retired
+        }   
     }
 
     // public creation for accounts to proxy from
@@ -204,7 +251,7 @@ pub contract Moments: NonFungibleToken {
             pre {
                 self.powerOfCreation!.check() : "Your CreatorProxy has no capabilities."
             }
-            let revoker = Moments.account.getCapability<&{Moments.Revoker}>(Moments.RevokerPublicPath).borrow()
+            let revoker = Moments.account.getCapability<&Moments.Administrator{Moments.Revoker}>(Moments.RevokerPublicPath).borrow()
                 ?? panic("Can't find the revoker/admin!")
 
             if (revoker.revoked(address: self.owner!.address)) { panic("Creator privileges revoked") }
@@ -226,7 +273,10 @@ pub contract Moments: NonFungibleToken {
         pub fun isSetRetired(setID:UInt64): Bool
     }
 
-    pub resource ContentCreator: ContentCreatorPublic { 
+    pub resource ContentCreator: ContentCreatorPublic {
+        // stores an address of the people that create content and the id's they created
+        access(self) let creators: {Address: [UInt64]}
+
         // content tracks contentID's to their respective ContentMetadata
         access(self) let content: {UInt64: ContentMetadata}
 
@@ -234,7 +284,6 @@ pub contract Moments: NonFungibleToken {
         access(self) let editions: {UInt64: [UInt64]}
 
         // seriesMetadata tracks seriesID's to their respective SeriesMetadata
-        // - Series contain an array of [Content]
         access(self) let series: {UInt64: SeriesMetadata}
         
         // sets tracks setID's to their respective SetMetadata
@@ -243,19 +292,14 @@ pub contract Moments: NonFungibleToken {
         // moments tracks momentID's to their respective MomentMetadata
         //  -- MomentMetadata is the aggregate of {Series:Set:Content}
         access(self) let moments: {UInt64: MomentMetadata}
-        
+
         // protected incrementors for new things
         access(contract) var newContentID: UInt64
         access(contract) var newSetID: UInt64
         access(contract) var newSeriesID: UInt64
-        
-        // creators
-        access(self) let creators: {Address:[UInt64]}
-
-        // retire set from further minting
-        access(self) let retiredSets: {UInt64: Bool}
 
         init() {
+            self.creators = {}
             self.content = {}
             self.editions = {}
             self.series = {}
@@ -265,9 +309,6 @@ pub contract Moments: NonFungibleToken {
             self.newContentID = 1
             self.newSetID = 1
             self.newSeriesID = 1
-
-            self.creators = {}
-            self.retiredSets = {}
         }
 
         ///////
@@ -276,17 +317,28 @@ pub contract Moments: NonFungibleToken {
         ///////
         // createContent
         // 
-        pub fun createContent(content: ContentMetadata): UInt64 {
+        pub fun createContent(content: ContentMetadata, creator: &CreatorProxy): UInt64 {
+            pre {
+                self.creators[creator.owner!.address] != nil : "That creator has not been registered"
+                creator.borrowContentCreator() != nil : "That proxy is invalid"
+                !self.isCreatorRevoked(creator: creator.owner!.address) : "That creator's proxy has been revoked"
+            }
+            // store creator attribution
+            let address = creator.owner!.address
             // create the new contentMetadata at the new ID
             let newID = self.newContentID
+            self.creators[address]!.append(newID)
             // enforce orderly id's by recreating contentMetadata here            
             let newContentMetadata = ContentMetadata(id:newID, 
                 name: content.name, 
                 description: content.description,
                 source: content.source,
+                creator: address,
+                credits: content.credits,
                 mediaType: content.mediaType,
                 mediaHash: content.mediaHash,
-                mediaURI: content.mediaURI)
+                mediaURI: content.mediaURI,
+                previewImage: content.previewImage)
             
             // increment and emit before giving back the new ID
             self.newContentID = self.newContentID + (1 as UInt64)
@@ -294,15 +346,15 @@ pub contract Moments: NonFungibleToken {
             self.editions[newID] = []
             self.content[newID] = newContentMetadata
 
-            emit ContentCreated(contentID: newID)
+            emit ContentCreated(contentID: newID, creator: address)
             return newID
         }
         // createSeries
         //
-        pub fun createSeries(name: String): UInt64 {
+        pub fun createSeries(name: String, art: String, description: String): UInt64 {
             // create the new metadata at the new ID
             let newID = self.newSeriesID
-            self.series[newID] = SeriesMetadata(id: newID, name: name)
+            self.series[newID] = SeriesMetadata(id: newID, name: name, art: art, description: description)
 
             // increment and emit before giving back the new ID
             self.newSeriesID = self.newSeriesID + (1 as UInt64)
@@ -311,13 +363,10 @@ pub contract Moments: NonFungibleToken {
         }
         // createSet
         //
-        pub fun createSet(name: String): UInt64 {
+        pub fun createSet(name: String, art: String, description: String): UInt64 {
             // create the new setMetadata at the new ID
             let newID = self.newSetID
-            self.sets[newID] = SetMetadata(id: newID, name: name)
-
-            // create the retirement flag for this set
-            self.retiredSets[newID] = false
+            self.sets[newID] = SetMetadata(id: newID, name: name, art: art, description: description)
 
             // increment and emit before giving back the new ID
             self.newSetID = self.newSetID + (1 as UInt64)
@@ -350,7 +399,7 @@ pub contract Moments: NonFungibleToken {
                 self.sets[setID] != nil: "Cannot add ContentEdition to Set: Set doesn't exist"
                 self.sets[setID]!.contentEditions[contentID] == nil : "That ContentID is already a part of that Set"
                 self.editions[contentID] != nil : "That edition already contains that ContentID"
-                !self.retiredSets[setID]!: "Cannot add ContentEdition to Set after it has been Retired"
+                !self.sets[setID]!.retired: "Cannot add ContentEdition to Set after it has been Retired"
                 
             }
             // add this content to the set to be minted from as a Moment
@@ -369,55 +418,50 @@ pub contract Moments: NonFungibleToken {
 
         // mintMoment
         //
-        pub fun mintMoment(contentID: UInt64, setID: UInt64, seriesID: UInt64): @NFT {
+        pub fun mintMoment(contentID: UInt64, seriesID: UInt64, setID: UInt64, ): @NFT {
             pre {
                 self.content[contentID] != nil: "Cannot mint Moment: This Content doesn't exist."
                 self.sets[setID] != nil: "Cannot mint Moment from this Set: This Set does not exist."
                 self.sets[setID]!.contentEditions[contentID] != nil : "Cannot mint from this Set: it has no Edition of that Content to Mint from"
-                !self.retiredSets[setID]!: "Cannot mint Moment from this Set: This Set has been retired."
+                !self.sets[setID]!.retired: "Cannot add ContentEdition to Set after it has been Retired"
                 self.series[seriesID] != nil: "Cannot mint Moment from this Series: the Series does not exist"    
                 self.series[seriesID]!.contentIDs.contains(contentID) : "Cannot mint Moment from this Series: the Series does not contain this Content"
             }
             // get the set from which this is being minted
             let set = self.sets[setID]!
             // get the edition and serial number
-            let edition = self.editions[setID]!.length
+            let contentEditions = self.editions[contentID]!
+            var editionForMoment = 0
+            var findIndex = 0
+            for edition in contentEditions {
+                if (edition == setID) {
+                    editionForMoment = findIndex
+                    break;
+                }
+                findIndex = findIndex + 1
+            }
             // increment the run of this content in the set itself
             set.contentEditions[contentID] = set.contentEditions[contentID]! + (1 as UInt64)
             let serialNumber = set.contentEditions[contentID]!
-            
 
             // Mint the new moment
             let newMoment: @NFT <- create NFT(contentID: contentID,
-                                              setID: setID,
+                                              contentEdition: UInt64(editionForMoment),
+                                              serialNumber: serialNumber,
                                               seriesID: seriesID,
-                                              contentEdition: UInt64(edition),
-                                              serialNumber: serialNumber)
+                                              setID: setID)
+            // so that we can map content creator to set-based moments
+            set.momentIDs[contentID] = newMoment.id
             // replace this set with the updated version that knows this was just minted
             self.sets[setID] = set
-            // get the other data it takes to create am oment
-            let contentMetadata = self.content[contentID]!
-            let seriesMetadata = self.series[seriesID]!
 
-            let moment = MomentMetadata(
-                id: newMoment.id,
-                serialNumber: newMoment.serialNumber,
-                contentID: newMoment.contentID,
+            let moment = self.makeMomentMetadata(
+                id: newMoment.id, 
+                contentID: contentID,
                 contentEdition: newMoment.contentEdition,
-                name: contentMetadata.name,
-                description: contentMetadata.description,
-                setID: newMoment.setID,
-                setName: set.name,
+                serialNumber: newMoment.serialNumber,
                 seriesID: seriesID,
-                seriesName: seriesMetadata.name,
-                mediaType: contentMetadata.mediaType,
-                mediaHash: contentMetadata.mediaHash,
-                mediaURI: contentMetadata.mediaURI,
-                complete: false,
-                run: 0
-            )
-            // we use a 0 run here because the "currentRun" is already indicated
-            // by the serialNumber. only fill out 'run' when it is 'complete'
+                setID: setID)
             
             // store a metadata copy to lookup later
             self.moments[newMoment.id] = moment
@@ -426,12 +470,12 @@ pub contract Moments: NonFungibleToken {
 
         // batchMintMoment
         //
-        pub fun batchMintMoment(contentID: UInt64, setID: UInt64, seriesID: UInt64, quantity: UInt64): @Collection {
+        pub fun batchMintMoment(contentID: UInt64, seriesID: UInt64, setID: UInt64, quantity: UInt64): @Collection {
             let newCollection <- create Collection()
 
             var i: UInt64 = 0
             while i < quantity {
-                newCollection.deposit(token: <-self.mintMoment(contentID: contentID, setID: setID, seriesID: seriesID))
+                newCollection.deposit(token: <-self.mintMoment(contentID: contentID, seriesID: seriesID, setID: setID))
                 i = i + (1 as UInt64)
             }
 
@@ -441,39 +485,48 @@ pub contract Moments: NonFungibleToken {
         ////// UPDATE & RETIRE //////
 
         // updateContentMetadata
-        // NOTE: we allow the content to be updated in case host changes
+        // NOTE: we allow the content to be updated in case host changes, or credits change etc.
         // PRE: must exist, thus cannot bypass creation route
-        pub fun updateContentMetadata(content: ContentMetadata) {     
+        // 
+        pub fun updateContentMetadata(content: ContentMetadata, creatorProxy: &CreatorProxy) {     
             pre {
                 self.content[content.id] != nil: "Cannot update that Content, it doesn't exist!"
+                creatorProxy.borrowContentCreator() != nil : "That Proxy is invalid"
+                content.creator == creatorProxy.owner!.address : "The creator has not authorized this update"
             }
             self.content[content.id] = content
 
             emit ContentUpdated(contentID: content.id)
         }
+
         // retireSet
         //
         pub fun retireSet(setID: UInt64) {
             pre {
                 self.sets[setID] != nil: "Cannot retire that Set, it doesn't exist!"
-                !self.retiredSets[setID]!: "Cannot retire that Set, it already is retired!"
+                !self.sets[setID]!.retired : "Cannot retire that Set, it already is retired!"
             }
-            self.retiredSets[setID] = true
-            emit SetRetired(setID:setID)
+            let set = self.sets[setID]!
+            set.retired = true
+            self.sets[setID] = set
+            emit SetRetired(setID: setID)
         }
 
         ////// ADMIN FUNCS //////
-        
-        // attribute
+
+        // isCreatorRevoked
+        // contract-level getter of revoke for code sugar
         //
-        access(contract) fun attribute(creator: Address, momentID: UInt64) {
+        access(contract) fun isCreatorRevoked(creator: Address): Bool {
             pre {
-                self.creators[creator] != nil : "That creator is unregistered"
-                self.moments[momentID] != nil : "That moment does not exist"
+               self.creators[creator] != nil : "That creator is not yet registered" 
             }
-            self.creators[creator]!.append(momentID)
-            emit CreatorAttributed(creator: creator, momentID: momentID)
+            let revoker = Moments.account.getCapability<&Moments.Administrator{Moments.Revoker}>(Moments.RevokerPublicPath).borrow()
+                ?? panic("Can't find the revoker/admin!")
+
+            return revoker.revoked(address: creator)
         }
+
         // registerCreator
         //
         access(contract) fun registerCreator(creator: Address) {
@@ -483,27 +536,109 @@ pub contract Moments: NonFungibleToken {
             self.creators[creator] = []
             emit CreatorRegistered(creator: creator)
         }
-        
+        // addCreatorAttribution
+        //
+        access(contract) fun addCreatorAttribution(contentID: UInt64, creator: Address) {
+            pre {
+                self.creators[creator] != nil : "That creator is unregistered"
+                self.content[contentID] != nil : "That content does not exist"
+                !self.isCreatorRevoked(creator: creator) : "That creator's proxy has been revoked"
+                !self.creators[creator]!.contains(contentID) : "That creator is already attributed to that content"
+            }
+            self.creators[creator]!.append(contentID)
+            emit CreatorAttributed(creator: creator, contentID: contentID)
+        }
+
+        // removeCreatorAttribution
+        //
+        access(contract) fun removeCreatorAttribution(contentID: UInt64, creator: Address) {
+            pre {
+                self.creators[creator] != nil : "That creator is unregistered"
+                self.content[contentID] != nil : "That content does not exist"
+                self.creators[creator]!.contains(contentID) : "That creator is not attributed to that content"
+            }
+            var findIndex:UInt64 = 0
+            for id in self.creators[creator]! {
+                if id == contentID {
+                    break;
+                }
+                findIndex = findIndex + 1 as UInt64
+            }
+            let removed = self.creators[creator]!.remove(at: findIndex)
+            assert(removed == contentID, message: "The wrong content has been removed")
+            emit CreatorAttributionRemoved(creator: creator, contentID: removed)
+        }
+
+        // admin route to forcibly update contentMetadata
+        //
+        access(contract) fun forceUpdateContentMetadata(content: ContentMetadata) {     
+            pre {
+                self.content[content.id] != nil: "Cannot update that Content, it doesn't exist!"
+            }
+            self.content[content.id] = content
+
+            emit ContentUpdated(contentID: content.id)
+        }
         //////// GETTERS AND SUGAR ////////
-        
+        // makeMomentMetadata
+        // simple sugar around grabbing hydrated metadata
+        // -- arguably defeats the purpose of STORING metadata this way at all
+        // -- TODO : potential tech debt: remove need for storage of MomentMetadata, 
+        // -- -- -- -- fetch hydrated info per-getMomentsMetadata/caller
+        //
+        access(contract) fun makeMomentMetadata(id: UInt64, contentID: UInt64, contentEdition: UInt64, serialNumber: UInt64, seriesID: UInt64, setID: UInt64): MomentMetadata {
+            pre {
+                self.content[contentID] != nil : "That content does not exist"
+                self.series[seriesID] != nil : "That series does not exist"
+                self.sets[setID] != nil : "That set does not exist"
+                self.sets[setID]!.contentEditions[contentID] != nil : "That content is not a part of that set"
+            }
+            let content = self.content[contentID]!
+            let series = self.series[seriesID]!
+            let set = self.sets[setID]!
+            let moment = MomentMetadata(
+                id: id,
+                serialNumber: serialNumber,
+                contentID: contentID,
+                contentEdition: contentEdition,
+                contentCreator: content.creator,
+                contentCredits: content.credits,
+                contentName: content.name,
+                contentDescription: content.description,
+                mediaType: content.mediaType,
+                mediaHash: content.mediaHash,
+                mediaURI: content.mediaURI,
+                previewImage: content.previewImage,
+                seriesID: seriesID,
+                seriesName: series.name,
+                seriesArt: series.art,
+                seriesDescription: series.description,
+                setID: setID,
+                setName: set.name,
+                setArt: set.art,
+                setDescription: set.description,
+                run: set.contentEditions[contentID]!,
+                retired: false)
+            
+            return moment
+        }
         // getMomentMetadata
-        // - Adds complete & run to existing Metadata if the Set is retired
+        // - Always hydrates on pull
         //
         pub fun getMomentMetadata(momentID: UInt64): MomentMetadata {
             pre {
                 self.moments[momentID] != nil : "That momentID has no metadata associated with it"
             }
-            
-            var moment = self.moments[momentID]!
-            
-            if (self.retiredSets[moment.setID]!) {
-                let set = self.sets[moment.setID]!
-                let run = set.contentEditions[moment.contentID]!
-                moment.complete = true
-                moment.run = run
-            }
+            let lastFetch = self.moments[momentID]!
+            let freshMoment = self.makeMomentMetadata(
+                id: momentID,
+                contentID: lastFetch.contentID, 
+                contentEdition: lastFetch.contentEdition, 
+                serialNumber: lastFetch.serialNumber,
+                seriesID: lastFetch.seriesID,
+                setID: lastFetch.setID)
 
-            return moment
+            return freshMoment
         }
         pub fun getContentMetadata(contentID: UInt64): ContentMetadata {
             pre {
@@ -538,9 +673,9 @@ pub contract Moments: NonFungibleToken {
         }
         pub fun isSetRetired(setID:UInt64): Bool {
             pre {
-                self.retiredSets[setID] != nil: "That set does not exist"
+                self.sets[setID] != nil : "That set does not exist"
             }
-            return self.retiredSets[setID]!
+            return self.sets[setID]!.retired
         }
     }
 
@@ -550,28 +685,29 @@ pub contract Moments: NonFungibleToken {
     pub resource NFT: NonFungibleToken.INFT {
         // The token's ID per NFT standard
         pub let id: UInt64
+        // The place in the Edition that this Moment was minted
+        pub let serialNumber: UInt64
         // The ID of the Content that the Moment references
         pub let contentID: UInt64
         // the edition of the content this Moment references
         pub let contentEdition: UInt64
-        // The ID of the Set that the Moment comes from
-        pub let setID: UInt64
         // The ID of the Series that the Moment comes from
         pub let seriesID: UInt64 
-        // The place in the Edition that this Moment was minted
-        pub let serialNumber: UInt64
+        // The ID of the Set that the Moment comes from
+        pub let setID: UInt64
+        
+        
 
-        init(contentID: UInt64, setID: UInt64, seriesID: UInt64, contentEdition: UInt64, serialNumber: UInt64) {
+        init(contentID: UInt64, contentEdition: UInt64, serialNumber: UInt64, seriesID: UInt64, setID: UInt64, ) {
             Moments.totalSupply = Moments.totalSupply + (1 as UInt64)
             self.id = Moments.totalSupply
-            
             self.contentID = contentID
-            self.setID = setID
-            self.seriesID = seriesID
             self.contentEdition = contentEdition
             self.serialNumber = serialNumber
+            self.seriesID = seriesID
+            self.setID = setID
 
-            emit MomentMinted(momentID: self.id, contentID: self.contentID, setID: self.setID, seriesID: self.seriesID, contentEdition: self.contentEdition, serialNumber: self.serialNumber)
+            emit MomentMinted(momentID: self.id, contentID: self.contentID, contentEdition: self.contentEdition, serialNumber: self.serialNumber, seriesID: self.seriesID, setID: self.setID)
         }
 
         // sugar func
@@ -754,11 +890,11 @@ pub contract Moments: NonFungibleToken {
         //
         pub fun registerCreator(address: Address, cc: Capability<&Moments.ContentCreator>) { 
             pre {
-                getAccount(address).getCapability<&{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath).check() : "Creator account does not have a valid Proxy"
+                getAccount(address).getCapability<&Moments.CreatorProxy{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath).check() : "Creator account does not have a valid Proxy"
                 self.creators[address] == nil : "That creator has already been registered"
                 cc.check(): "that contentcreator is invalid"
             }
-            let pCap = getAccount(address).getCapability<&{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath)
+            let pCap = getAccount(address).getCapability<&Moments.CreatorProxy{Moments.CreatorProxyPublic}>(Moments.CreatorProxyPublicPath)
             let proxy = pCap.borrow() ?? panic("failed to borrow the creator's proxy")
             self.creators[address] = true // don't break the rules
             // this will register the proxy with the ContentCreator
@@ -803,16 +939,36 @@ pub contract Moments: NonFungibleToken {
             return !self.creators[address]!
         }
 
-        // attributeCreator
-        //   - specify what address was involved in creating a given moment 
+        // addCreatorAttribution
+        //   - specify what address was involved in creating a given piece of content 
         //
-        pub fun attributeCreator(address: Address, momentID: UInt64) {
+        pub fun addCreatorAttribution(creator: Address, contentID: UInt64) {
             pre {
-                self.creators[address] != nil: "That creator has never been registered"
+                self.creators[creator] != nil: "That creator has never been registered"
             }
             let cc = Moments.account.borrow<&Moments.ContentCreator>(from: Moments.ContentCreatorStoragePath)
                 ?? panic("NO CONTENT CREATOR! What'd you doooo")
-            cc.attribute(creator: address, momentID: momentID)
+            cc.addCreatorAttribution(contentID: contentID, creator: creator)
+        }
+
+        // removeCreatorAttribution
+        //   - specify what address was involved in creating a given piece of content 
+        //
+        pub fun removeCreatorAttribution(creator: Address, contentID: UInt64) {
+            pre {
+                self.creators[creator] != nil: "That creator has never been registered"
+            }
+            let cc = Moments.account.borrow<&Moments.ContentCreator>(from: Moments.ContentCreatorStoragePath)
+                ?? panic("NO CONTENT CREATOR! What'd you doooo")
+            cc.removeCreatorAttribution(contentID: contentID, creator: creator)
+        }
+
+        // updateContentMetadata
+        //
+        pub fun updateContentMetadata(content: ContentMetadata) {
+            let cc = Moments.account.borrow<&Moments.ContentCreator>(from: Moments.ContentCreatorStoragePath)
+                ?? panic("NO CONTENT CREATOR! What'd you doooo")
+            cc.forceUpdateContentMetadata(content: content)
         }
     }
 
@@ -824,7 +980,7 @@ pub contract Moments: NonFungibleToken {
     //
     pub fun fetch(_ from: Address, momentID: UInt64): &Moments.NFT? {
         let collection = getAccount(from)
-            .getCapability<&{Moments.CollectionPublic}>(Moments.CollectionPublicPath)
+            .getCapability<&Moments.Collection{Moments.CollectionPublic}>(Moments.CollectionPublicPath)
             .borrow() ?? panic("Couldn't get collection")
         // We trust Moments.Collection.borrowMoment to get the correct itemID
         // (it checks it before returning it).
@@ -835,7 +991,7 @@ pub contract Moments: NonFungibleToken {
     //   - easy route to the CC public path
     //
     pub fun getContentCreator(): &{Moments.ContentCreatorPublic} {
-        let publicContent = Moments.account.getCapability<&{Moments.ContentCreatorPublic}>(Moments.ContentCreatorPublicPath).borrow() 
+        let publicContent = Moments.account.getCapability<&Moments.ContentCreator{Moments.ContentCreatorPublic}>(Moments.ContentCreatorPublicPath).borrow() 
             ?? panic("Could not get the public content from the contract")
         return publicContent
     }
@@ -871,7 +1027,7 @@ pub contract Moments: NonFungibleToken {
         self.account.save(<- admin, to: self.AdministratorStoragePath)
         // Link it to provide shareable access route to capabilities
         self.account.link<&Moments.Administrator>(self.AdministratorPrivatePath, target: self.AdministratorStoragePath)
-        self.account.link<&{Moments.Revoker}>(self.RevokerPublicPath, target: self.AdministratorStoragePath)
+        self.account.link<&Moments.Administrator{Moments.Revoker}>(self.RevokerPublicPath, target: self.AdministratorStoragePath)
         
 
         // Create a ContentCreator resource and save it to storage
@@ -879,12 +1035,12 @@ pub contract Moments: NonFungibleToken {
         self.account.save(<- cc, to: self.ContentCreatorStoragePath)
         // Link it to provide shareable access route to capabilities
         self.account.link<&Moments.ContentCreator>(self.ContentCreatorPrivatePath, target: self.ContentCreatorStoragePath)
-        self.account.link<&{Moments.ContentCreatorPublic}>(self.ContentCreatorPublicPath, target: self.ContentCreatorStoragePath)
+        self.account.link<&Moments.ContentCreator{Moments.ContentCreatorPublic}>(self.ContentCreatorPublicPath, target: self.ContentCreatorStoragePath)
 
         // create a personal collection just in case contract ever holds Moments to distribute later etc
         let collection <- create Collection()
         self.account.save(<- collection, to: self.CollectionStoragePath)
-        self.account.link<&{Moments.CollectionPublic}>(self.CollectionPublicPath, target: self.CollectionStoragePath)
+        self.account.link<&Moments.Collection{Moments.CollectionPublic, NonFungibleToken.Receiver}>(self.CollectionPublicPath, target: self.CollectionStoragePath)
         
         emit ContractInitialized()
     }

@@ -11,7 +11,7 @@ transaction {
             signer.save(<-adminProxy, to: Moments.CreatorProxyStoragePath)
 
             // link receiver for admin to activate me as a proxy
-            signer.link<&{Moments.CreatorProxyPublic}>(
+            signer.link<&Moments.CreatorProxy{Moments.CreatorProxyPublic}>(
                 Moments.CreatorProxyPublicPath, 
                 target: Moments.CreatorProxyStoragePath)
         }

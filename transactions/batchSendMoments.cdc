@@ -8,7 +8,7 @@ transaction(recipients: [Address], moments: {Address: [UInt64]}) {
         self.recipientCollections = {}
         // get the recipients public account object
         for address in recipients {
-            self.recipientCollections[address] = getAccount(address).getCapability(Moments.CollectionPublicPath).borrow<&{Moments.CollectionPublic}>()
+            self.recipientCollections[address] = getAccount(address).getCapability(Moments.CollectionPublicPath).borrow<&Moments.Collection{Moments.CollectionPublic}>()
                 ?? panic("Could not borrow a reference to the recipient's collection")
         }
 

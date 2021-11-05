@@ -2,7 +2,18 @@ import NonFungibleToken from "../contracts/standard/NonFungibleToken.cdc"
 import Moments from "../contracts/Moments.cdc"
 
 pub fun main(creator: Address): [UInt64] {
+    let moments:[UInt64] = []
     let cc = Moments.getContentCreator()
    
-    return cc.getCreatorAttributions(address: creator)
+    let attributions = cc.getCreatorAttributions(address: creator)
+    for contentID in attributions {
+        let contentEditions = cc.getContentEditions(contentID: contentID)
+        for setID in contentEditions {
+            let set = cc.getSetMetadata(setID: setID)
+            if (set.momentIDs.containsKey(contentID)) {
+                moments.append(set.momentIDs[contentID]!)
+            }
+        }
+    }
+    return moments
 }
