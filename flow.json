@@ -69,7 +69,9 @@
 			"emulator-account": [
 				"NonFungibleToken",
 				"Moments"
-			]
+			],
+			 "emulator-user" : [],
+			 "emulator-creator" : []
 		},
 		"testnet": {
 			"testnet-accountf": [

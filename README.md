@@ -170,3 +170,9 @@ flow scripts execute ./scripts/getMoments.cdc "[1,2,3]"
 
 # Looks good, ya!?
 ```
+
+## Unit tests
+install go
+install gotestsum `go get gotest.tools/gotestsum`
+`go mod tidy`
+`gotestsum -f testname --hide-summary output`

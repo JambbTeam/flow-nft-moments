@@ -13,6 +13,8 @@ transaction {
             signer.link<&Moments.Collection{Moments.CollectionPublic, NonFungibleToken.Receiver}>(
                 Moments.CollectionPublicPath,
                 target: Moments.CollectionStoragePath)
-            }
+
+
+        }
     }
 }
