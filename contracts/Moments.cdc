@@ -125,21 +125,21 @@ pub contract Moments: NonFungibleToken {
     pub struct SeriesMetadata {
         pub let id: UInt64
         pub let name: String
-        pub let art: String
         pub let description: String
-        
+        pub let art: String?
+
         // content ids in the series
         pub(set) var contentIDs: [UInt64]
 
-        init(id: UInt64, name: String, art: String, description: String) {
+        init(id: UInt64, name: String, description: String, art: String?) {
             pre {
                 name.length > 0: "New Series name cannot be empty"
             }
             self.id = id
             self.name = name
             self.contentIDs = []
-            self.art = art
             self.description = description
+            self.art = art
         }
     }
     // Set Metadata
@@ -147,8 +147,8 @@ pub contract Moments: NonFungibleToken {
     pub struct SetMetadata {
         pub let id: UInt64
         pub let name: String
-        pub let art: String
         pub let description: String
+        pub let art: String?
         pub let rarityCaps: {String: UInt64}
 
         // map of contentIDs to their edition details used in this set
@@ -159,14 +159,14 @@ pub contract Moments: NonFungibleToken {
         pub(set) var retired: Bool
 
         
-        init(id: UInt64, name: String, art: String, description: String, rarityCaps: {String: UInt64}) {
+        init(id: UInt64, name: String, description: String, rarityCaps: {String: UInt64}, art: String?) {
             pre {
                 name.length > 0: "New Set name cannot be empty"
             }
             self.id = id
             self.name = name
-            self.art = art
             self.description = description
+            self.art = art
             self.rarityCaps = rarityCaps
             self.contentEditions = {}
             self.retired = false
@@ -193,12 +193,12 @@ pub contract Moments: NonFungibleToken {
         // series
         pub let seriesID: UInt64
         pub let seriesName: String
-        pub let seriesArt: String
+        pub let seriesArt: String?
         pub let seriesDescription: String
         // set
         pub let setID: UInt64
         pub let setName: String
-        pub let setArt: String
+        pub let setArt: String?
         pub let setDescription: String
         pub let retired: Bool
         // contentedition
@@ -209,8 +209,8 @@ pub contract Moments: NonFungibleToken {
             contentID: UInt64, contentCreator: Address, 
             contentCredits: {String: String}, contentName: String, contentDescription: String, 
             mediaType: String, mediaHash: String, mediaURI: String, previewImage: String, 
-            seriesID: UInt64, seriesName: String, seriesArt: String, seriesDescription: String,
-            setID: UInt64, setName: String, setArt: String, setDescription: String, retired: Bool,
+            seriesID: UInt64, seriesName: String, seriesArt: String?, seriesDescription: String,
+            setID: UInt64, setName: String, setArt: String?, setDescription: String, retired: Bool,
             contentEditionID: UInt64, rarity: String, run: UInt64) {
             // moments
             self.id = id
@@ -373,10 +373,10 @@ pub contract Moments: NonFungibleToken {
         }
         // createSeries
         //
-        pub fun createSeries(name: String, art: String, description: String): UInt64 {
+        pub fun createSeries(name: String, description: String, art: String?): UInt64 {
             // create the new metadata at the new ID
             let newID = self.newSeriesID
-            self.series[newID] = SeriesMetadata(id: newID, name: name, art: art, description: description)
+            self.series[newID] = SeriesMetadata(id: newID, name: name, description: description, art: art)
 
             // increment and emit before giving back the new ID
             self.newSeriesID = self.newSeriesID + (1 as UInt64)
@@ -385,10 +385,10 @@ pub contract Moments: NonFungibleToken {
         }
         // createSet
         //
-        pub fun createSet(name: String, art: String, description: String, rarityCaps: {String: UInt64}): UInt64 {
+        pub fun createSet(name: String, description: String, art: String?, rarityCaps: {String: UInt64}): UInt64 {
             // create the new setMetadata at the new ID
             let newID = self.newSetID
-            self.sets[newID] = SetMetadata(id: newID, name: name, art: art, description: description, rarityCaps: rarityCaps)
+            self.sets[newID] = SetMetadata(id: newID, name: name, description: description, rarityCaps: rarityCaps, art: art)
 
             // increment and emit before giving back the new ID
             self.newSetID = self.newSetID + (1 as UInt64)
@@ -422,7 +422,6 @@ pub contract Moments: NonFungibleToken {
                 self.sets[setID]!.contentEditions[contentID] == nil : "That ContentID is already a part of that Set"
                 self.editions[contentID] != nil : "That edition already contains that ContentID"
                 !self.sets[setID]!.retired: "Cannot add ContentEdition to Set after it has been Retired"
-                
             }
             // establish the back-map from content to set, for finding peer content easily
             self.editions[contentID]!.append(setID)
@@ -430,6 +429,7 @@ pub contract Moments: NonFungibleToken {
 
             // add this content to the set to be minted from as a Moment
             let set = self.sets[setID]!
+            assert(set.rarityCaps.keys.contains(rarity), message: "That Rarity is invalid")
             set.contentEditions[contentID] = EditionMetadata(id: editionID, contentID: contentID, rarity: rarity)
             
             // update state
@@ -443,7 +443,7 @@ pub contract Moments: NonFungibleToken {
 
         // mintMoment
         //
-        pub fun mintMoment(contentID: UInt64, seriesID: UInt64, setID: UInt64, ): @NFT {
+        pub fun mintMoment(contentID: UInt64, seriesID: UInt64, setID: UInt64): @NFT {
             pre {
                 self.content[contentID] != nil: "Cannot mint Moment: This Content doesn't exist."
                 self.sets[setID] != nil: "Cannot mint Moment from this Set: This Set does not exist."
@@ -456,12 +456,15 @@ pub contract Moments: NonFungibleToken {
             let set = self.sets[setID]!
             // get the edition of this content from the set
             let contentEdition = set.contentEditions[contentID]!
-            let serialNumber = contentEdition.moments.length
+            let serialNumber = UInt64(contentEdition.moments.length + 1)
+
+            // check that we're not blowing the minting cap for this edition
+            assert(serialNumber < set.rarityCaps[contentEdition.rarity]!, message: "The cap for that rarity has already been minted for that Moment.")
 
             // Mint the new moment
             let newMoment: @NFT <- create NFT(contentID: contentID,
                                               contentEditionID: contentEdition.id,
-                                              serialNumber: UInt64(serialNumber),
+                                              serialNumber: serialNumber,
                                               seriesID: seriesID,
                                               setID: setID)
             
