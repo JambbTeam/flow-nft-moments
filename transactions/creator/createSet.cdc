@@ -8,7 +8,14 @@ transaction(name: String, art: String, description: String) {
             ?? panic("cannot get a valid creatorproxy resource for the signer")
         
         let creator = proxy.borrowContentCreator()
+        let rarityCaps: {String: UInt64} = {}
+        // update to take from args!
+        rarityCaps["Common"] = 10000
+        rarityCaps["Uncommon"] = 2500
+        rarityCaps["Rare"] = 500
+        rarityCaps["Legendary"] = 100
+        rarityCaps["Exclusive"] = 1
 
-        creator.createSet(name: name, art: art, description: description)
+        creator.createSet(name: name, art: art, description: description, rarityCaps: rarityCaps)
     }
 }

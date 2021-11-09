@@ -10,8 +10,6 @@ transaction(contentID: UInt64, contentMetadata: [String], credits: {String:Strin
         
         let creator = ccProxy.borrowContentCreator()
         let oldContent = creator.getContentMetadata(contentID: contentID)
-        // NOTE: we pass id: 0 because we don't know what ID this content will have until it has been successfully
-        // added, so it will be replaced by the contract's contentcreator
         let content = Moments.ContentMetadata(
                 id: contentID, 
                 name: contentMetadata[0], 
