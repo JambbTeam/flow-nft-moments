@@ -81,26 +81,23 @@ pub contract Moments: NonFungibleToken {
         pub let creator: Address
         // performer names and other credits
         pub let credits: {String: String}
-        // MIME type: image/png, image/jpeg, video/mp4, audio/mpeg
-        pub let mediaType: String 
-        // IPFS storage hash
-        pub let mediaHash: String
-        // URI to NFT media - incase IPFS not in use/avail
-        pub let mediaURI: String
         // uri to a preview image
         pub let previewImage: String
+        // URI to content video
+        pub let videoURI: String
+        // IPFS storage hash
+        pub let videoHash: String
 
-        init(id: UInt64, name: String, description: String, source: String, creator: Address, credits: {String: String}, mediaType: String, mediaHash: String, mediaURI: String, previewImage: String) {
+        init(id: UInt64, name: String, description: String, source: String, creator: Address, credits: {String: String}, previewImage: String, videoURI: String, videoHash: String) {
             self.id = id
             self.name = name
             self.description = description
             self.source = source
             self.creator = creator
             self.credits = credits
-            self.mediaType = mediaType
-            self.mediaHash = mediaHash
-            self.mediaURI = mediaURI
             self.previewImage = previewImage
+            self.videoURI = videoURI
+            self.videoHash = videoHash
         }
     }
 
@@ -110,13 +107,13 @@ pub contract Moments: NonFungibleToken {
         pub let id: UInt64
         pub let contentID: UInt64
         pub let rarity: String
-        pub(set) var moments: [UInt64]
+        pub(set) var momentIDs: [UInt64]
         
         init(id: UInt64, contentID: UInt64, rarity: String) {
             self.id = id
             self.contentID = contentID
             self.rarity = rarity
-            self.moments = []
+            self.momentIDs = []
         }
     }
     
@@ -186,10 +183,9 @@ pub contract Moments: NonFungibleToken {
         pub let contentCredits: {String: String}
         pub let contentName: String
         pub let contentDescription: String
-        pub let mediaType: String
-        pub let mediaHash: String
-        pub let mediaURI: String
         pub let previewImage: String
+        pub let videoURI: String
+        pub let videoHash: String
         // series
         pub let seriesID: UInt64
         pub let seriesName: String
@@ -208,7 +204,7 @@ pub contract Moments: NonFungibleToken {
         init(id: UInt64, serialNumber: UInt64, 
             contentID: UInt64, contentCreator: Address, 
             contentCredits: {String: String}, contentName: String, contentDescription: String, 
-            mediaType: String, mediaHash: String, mediaURI: String, previewImage: String, 
+            previewImage: String, videoURI: String, videoHash: String,
             seriesID: UInt64, seriesName: String, seriesArt: String?, seriesDescription: String,
             setID: UInt64, setName: String, setArt: String?, setDescription: String, retired: Bool,
             contentEditionID: UInt64, rarity: String, run: UInt64) {
@@ -221,10 +217,9 @@ pub contract Moments: NonFungibleToken {
             self.contentCredits = contentCredits
             self.contentName = contentName
             self.contentDescription = contentDescription
-            self.mediaType = mediaType
-            self.mediaHash = mediaHash
-            self.mediaURI = mediaURI
             self.previewImage = previewImage
+            self.videoURI = videoURI
+            self.videoHash = videoHash
             // series
             self.seriesID = seriesID
             self.seriesName = seriesName
@@ -357,10 +352,9 @@ pub contract Moments: NonFungibleToken {
                 source: content.source,
                 creator: address,
                 credits: content.credits,
-                mediaType: content.mediaType,
-                mediaHash: content.mediaHash,
-                mediaURI: content.mediaURI,
-                previewImage: content.previewImage)
+                previewImage: content.previewImage,
+                videoURI: content.videoURI,
+                videoHash: content.videoHash)
             
             // increment and emit before giving back the new ID
             self.newContentID = self.newContentID + (1 as UInt64)
@@ -469,7 +463,7 @@ pub contract Moments: NonFungibleToken {
                                               setID: setID)
             
             // add this moment to that content edition
-            contentEdition.moments.append(newMoment.id)
+            contentEdition.momentIDs.append(newMoment.id)
             set.contentEditions[contentID] = contentEdition
             
             // replace this set with the updated version that knows this was just minted
@@ -651,10 +645,9 @@ pub contract Moments: NonFungibleToken {
                 contentCredits: content.credits,
                 contentName: content.name,
                 contentDescription: content.description,
-                mediaType: content.mediaType,
-                mediaHash: content.mediaHash,
-                mediaURI: content.mediaURI,
                 previewImage: content.previewImage,
+                videoURI: content.videoURI,
+                videoHash: content.videoHash,
                 seriesID: seriesID,
                 seriesName: series.name,
                 seriesArt: series.art,

@@ -17,10 +17,9 @@ transaction(contentID: UInt64, contentMetadata: [String], credits: {String:Strin
                 source: contentMetadata[2],
                 creator: oldContent.creator,
                 credits: credits,
-                mediaType: contentMetadata[3], 
-                mediaHash: contentMetadata[4], 
-                mediaURI: contentMetadata[5],
-                previewImage: contentMetadata[6])
+                previewImage: contentMetadata[3], 
+                videoURI: contentMetadata[4], 
+                videoHash: contentMetadata[5])
 
         creator.updateContentMetadata(content: content, creatorProxy: ccProxy)
     }

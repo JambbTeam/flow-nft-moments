@@ -1,7 +1,7 @@
 import NonFungibleToken from "../../contracts/standard/NonFungibleToken.cdc"
 import Moments from "../../contracts/Moments.cdc"
 
-transaction(contentMetadata: [String], credits: {String:String}, seriesName: String, seriesArt: String, seriesDescription: String, setName: String, setArt: String, setDescription: String) {
+transaction(contentMetadata: [String], credits: {String:String}, seriesID: UInt64, setID: UInt64) {
     prepare(signer: AuthAccount) {
         let proxy = signer.borrow<&Moments.CreatorProxy>(from: Moments.CreatorProxyStoragePath)
             ?? panic("cannot get a valid creatorproxy resource for the signer")
@@ -17,14 +17,12 @@ transaction(contentMetadata: [String], credits: {String:String}, seriesName: Str
                 source: contentMetadata[2],
                 creator: signer.address,
                 credits: credits,
-                mediaType: contentMetadata[3], 
-                mediaHash: contentMetadata[4], 
-                mediaURI: contentMetadata[5],
-                previewImage: contentMetadata[6])
+                previewImage: contentMetadata[3], 
+                videoURI: contentMetadata[4], 
+                videoHash: contentMetadata[5])
 
         let contentID = creator.createContent(content: content, creator: proxy)
-        let seriesID = creator.createSeries(name: seriesName, art: seriesArt, description: seriesDescription)
-        let setID = creator.createSet(name: setName, art: setArt, description: setDescription)
+
         creator.addContentToSeries(contentID: contentID, seriesID: seriesID)
         creator.addContentToSet(contentID: contentID, setID: setID)
         // now you can mint

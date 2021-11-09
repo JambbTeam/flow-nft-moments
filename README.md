@@ -35,19 +35,18 @@ flow transactions send ./transactions/setupMoments.cdc;
 flow transactions send ./transactions/setupMoments.cdc --signer emulator-user;
 flow transactions send ./transactions/setupMoments.cdc --signer emulator-creator;
 flow transactions send ./transactions/setupAdminProxy.cdc;
+flow transactions send ./transactions/setupCreatorProxy.cdc;
 flow transactions send ./transactions/setupCreatorProxy.cdc --signer emulator-creator;
 
 # set the emulator as an valid Admin via its Proxy (to test the proxy routes have no issue, these are less easily revoked)
 flow transactions send ./transactions/admin/activateAdminProxy.cdc 0xf8d6e0586b0a20c7;
 
-
 # test the admin proxy by registering a new creator with it, as itself
 flow transactions send ./transactions/admin/registerCreator.cdc 0x01cf0e2f2f715450;
 
-# my user is gunna go rogue and i’ll make a mistake, then fix it 
+# this user is gunna go rogue and make a mistake, then admin will fix it 
 flow transactions send ./transactions/setupCreatorProxy.cdc --signer emulator-user;
 flow transactions send ./transactions/admin/registerCreator.cdc 0x179b6b1cb6755e31;
-
 
 # for the sake of the demo I wont show all the transactions, but let’s assume ole 0x179’er goes hog-wild and makes a bunch of things he should make, lets revoke that
 flow transactions send ./transactions/admin/revokeCreator.cdc 0x01cf0e2f2f715450;
@@ -58,30 +57,30 @@ flow transactions send ./transactions/admin/revokeCreator.cdc 0x179b6b1cb6755e31
 
 # now he cant create
 flow transactions send ./transactions/creator/createContent.cdc "[\"one\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-user;
-# that failed
+
+######
 
 # now let’s create some content
-flow transactions send ./transactions/creator/createContent.cdc "[\"First Content\", \"\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"More Content\", \"\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"Additional Content\", \"\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-creator;
-flow transactions send ./transactions/creator/createContent.cdc "[\"The Last Content... for now\", \"\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"The First Name\", \"Descriptions\", \"Source is a String\", \"previewImg1\", \"videoURI1\", \"0x1\"]" "{}" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"A Better Name\", \"Can\", \"It can be the NAme of an Entity\", \"previewImg2\", \"videoURI2\", \"0x2\"]" "{}" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"Probably a Bad Name\", \"Be\", \"That this Content is Sourced from\", \"previewImg3\", \"videoURI3\", \"0x3\"]" "{}" --signer emulator-creator;
+flow transactions send ./transactions/creator/createContent.cdc "[\"The Last Content... for now\", \"Useful\", \"https://www.oralink.com/to/the/source/content/this?derivative-came-from\", \"previewImg4\", \"videoURI4\", \"0x4\"]" "{}" --signer emulator-creator;
 
 
-flow transactions send ./transactions/creator/createSeries.cdc "Amazing Stuff" "a" "d" --signer emulator-creator;
+flow transactions send ./transactions/creator/createSeries.cdc "Series One" "The First Series, As Described" nil --signer emulator-creator;
 
 # oops we misspelled on create
-flow transactions send ./transactions/creator/createSeries.cdc "Series Twfo" "a" "d" --signer emulator-creator;
-# try to fix it?
-# flow transactions send ./transactions/creator/updateSeries.cdc 2 "Two” "a" "d"
-# nope, this is not allowed, just make a new series since it has no content yet its worthless
-# once a series has content, its name is established and cannot be changed later
-# so just make the correct one and carry on!
-flow transactions send ./transactions/creator/createSeries.cdc "Series Two" "a" "d" --signer emulator-creator;
+flow transactions send ./transactions/creator/createSeries.cdc "Series Twfo" "kek" nil --signer emulator-creator;
+# try to fix it? guess what, CREATOR CANT! only ADMIN can update Series and Sets, as they are more persistent and should rarely need changing
+
+# admin will fix this right up :)
+flow transactions send ./transactions/admin/forceUpdateSeries.cdc "Series Two" "A Better Descrip" nil; 
 
 # lets make three Sets
-flow transactions send ./transactions/creator/createSet.cdc "One Set" "a" "d" --signer emulator-creator;
-flow transactions send ./transactions/creator/createSet.cdc "Set Two" "a" "d" --signer emulator-creator;
-flow transactions send ./transactions/creator/createSet.cdc "FunSet: Both" "a" "d" --signer emulator-creator;
+flow transactions send ./transactions/creator/createSet.cdc "One Set" "OneDescrip" nil nil --signer emulator-creator;
+flow transactions send ./transactions/creator/createSet.cdc "Set Two" "Dont use set two" nil nil --signer emulator-creator;
+flow transactions send ./transactions/creator/createSet.cdc "FunSet: Both" "Wow cool set broh" nil nil --signer emulator-creator;
+### Elephant in the room: nil nil? Those are `art` and `rarityCaps`. ART is optional, but rarityCaps uses a default because CLI cant handle dictionaries :)
 
 # now we need to add the content to their respective Series
 flow transactions send ./transactions/creator/addContentToSeries.cdc 1 1 --signer emulator-creator;
@@ -90,18 +89,23 @@ flow transactions send ./transactions/creator/addContentToSeries.cdc 3 1 --signe
 flow transactions send ./transactions/creator/addContentToSeries.cdc 2 2 --signer emulator-creator;
 
 # now add that content to some sets so that we can edition it into a moment
-flow transactions send ./transactions/creator/addContentToSet.cdc 1 1 --signer emulator-creator;
-flow transactions send ./transactions/creator/addContentToSet.cdc 3 1 --signer emulator-creator;
-flow transactions send ./transactions/creator/addContentToSet.cdc 2 2 --signer emulator-creator;
-flow transactions send ./transactions/creator/addContentToSet.cdc 2 3 --signer emulator-creator;
-flow transactions send ./transactions/creator/addContentToSet.cdc 3 3 --signer emulator-creator;
+flow transactions send ./transactions/creator/addContentToSet.cdc 1 1 Common --signer emulator-creator;
+flow transactions send ./transactions/creator/addContentToSet.cdc 3 1 Uncommon --signer emulator-creator;
+flow transactions send ./transactions/creator/addContentToSet.cdc 2 2 Rare --signer emulator-creator;
+flow transactions send ./transactions/creator/addContentToSet.cdc 2 3 Legendary --signer emulator-creator;
+flow transactions send ./transactions/creator/addContentToSet.cdc 3 3 Exclusive --signer emulator-creator;
 
-# after all this config, we have a few options to create Moments from:
+#########
+
+# after all this config, we have a few options to create Moments from
 flow transactions send ./transactions/creator/mintMoment.cdc 1 1 1 --signer emulator-creator;
+
 # this fails! Not in the set!
 # flow transactions send ./transactions/creator/mintMoment.cdc 2 1 1 --signer emulator-creator;
+
+# this works
 flow transactions send ./transactions/creator/mintMoment.cdc 3 1 1 --signer emulator-creator;
-# logically we’ve just minted content 1,2,3 into an edition of series1:set1
+
 # some things that wont work...
 # flow transactions send ./transactions/creator/mintMoment.cdc 1 1 2 --signer emulator-creator; # not in series 2!
 # flow transactions send ./transactions/creator/mintMoment.cdc 4 1 1 --signer emulator-creator; # content id 4 is not editioned
@@ -123,6 +127,10 @@ flow transactions send ./transactions/creator/retireSet.cdc 2 --signer emulator-
 flow transactions send ./transactions/creator/mintMoment.cdc 2 1 2 --signer emulator-creator;
 flow transactions send ./transactions/creator/mintMoment.cdc 2 2 2 --signer emulator-creator;
 
+# ok lets try to mint some more copies of our exclusives...
+flow transactions send ./transactions/creator/mintMoment.cdc 3 1 3 --signer emulator-creator;
+# !! THIS FAILS! only 1 of these can exist for that rarity! you can mint more of the others, but this is the easiest cap to show :)
+
 # misattribute on purpose
 flow transactions send ./transactions/admin/addCreatorAttribution.cdc 0x179b6b1cb6755e31 3; 
 # lets fix that misattribution
@@ -134,8 +142,7 @@ flow scripts execute ./scripts/getCreatorContentIDs.cdc 0x01cf0e2f2f715450;
 flow scripts execute ./scripts/getCreatorMomentIDs.cdc 0x01cf0e2f2f715450;
 flow scripts execute ./scripts/getCreatorMomentIDs.cdc 0x179b6b1cb6755e31;
 
-
-# now lets look at some state…
+# or by user account holdings
 flow scripts execute ./scripts/getAllUserMoments.cdc 0x01cf0e2f2f715450;
 
 # whats up with these sets and moments etc
@@ -155,13 +162,17 @@ flow scripts execute ./scripts/addressHasMoment.cdc 0x179b6b1cb6755e31 2;
 flow scripts execute ./scripts/addressHasMoment.cdc 0x179b6b1cb6755e31 1;
 
 # test the power of the overlord
-flow transactions send ./transactions/admin/forceUpdateContent.cdc 1 "[\"FORCED UPDATE\", \"BEFORE I WAS BAD, NOW I AM GOOD\", \"\", \"\", \"\", \"\", \"YAY.lyfe\"]" "{}"
+flow transactions send ./transactions/admin/forceUpdateContent.cdc 1 "[\"FORCED UPDATE\", \"BEFORE I WAS BAD, NOW I AM GOOD\", \"\", \"\", \"\", \"\"]" "{}"
 # and the underlord
-flow transactions send ./transactions/creator/updateContent.cdc 2 "[\"regularly updated lol\", \"not as cool as the other guy\", \"\", \"\", \"\", \"\", \"doh.lyfe\"]" "{}" --signer emulator-creator
-# doesnt work for user
-flow transactions send ./transactions/creator/updateContent.cdc 3 "[\"7\", \"7\", \"7\", \"7\", \"7\", \"7\", \"7\"]" "{}" --signer emulator-user
-# funny enough it doesnt work for the admin, THROUGH THE CC, that is!
-flow transactions send ./transactions/creator/updateContent.cdc 3 "[\"7\", \"7\", \"7\", \"7\", \"7\", \"7\", \"7\"]" "{}" --signer emulator-account
+flow transactions send ./transactions/creator/updateContent.cdc 2 "[\"regularly updated lol\", \"not as cool as the other guy\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-creator
+# see: doesnt work for user
+flow transactions send ./transactions/creator/updateContent.cdc 3 "[\"\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-user
+
+# see: funny enough it doesnt work for the admin, THROUGH THE CC, that is!
+flow transactions send ./transactions/admin/registerCreator.cdc 0xf8d6e0586b0a20c7;
+flow transactions send ./transactions/creator/updateContent.cdc 3 "[\"\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-account
+
+# how did these moments shape up?
 flow scripts execute ./scripts/getMoments.cdc "[1,2,3]"
 
 ## This nuance is worth highlighting, that the ACTUAL CREATOR of a given content is

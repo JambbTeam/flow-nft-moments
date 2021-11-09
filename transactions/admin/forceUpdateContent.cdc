@@ -1,6 +1,8 @@
 import NonFungibleToken from "../../contracts/standard/NonFungibleToken.cdc"
 import Moments from "../../contracts/Moments.cdc"
 
+// this tx is a bit lame, hacked so that CLI can use it, credits are always empty right now too
+// dicts cant be used in CLI, but the apps can use this
 transaction(contentID: UInt64, contentMetadata: [String], credits: {String:String}) {
     prepare(signer: AuthAccount) {
         let ccProxy = signer.borrow<&Moments.CreatorProxy>(from: Moments.CreatorProxyStoragePath)
@@ -17,10 +19,9 @@ transaction(contentID: UInt64, contentMetadata: [String], credits: {String:Strin
                 source: contentMetadata[2],
                 creator: oldContent.creator,
                 credits: credits,
-                mediaType: contentMetadata[3], 
-                mediaHash: contentMetadata[4], 
-                mediaURI: contentMetadata[5],
-                previewImage: contentMetadata[6])
+                previewImage: contentMetadata[3], 
+                videoURI: contentMetadata[4], 
+                videoHash: contentMetadata[5])
 
         let admin = adminProxy.borrowSudo()!
         admin.updateContentMetadata(content:content)

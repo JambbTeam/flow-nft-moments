@@ -10,8 +10,11 @@ pub fun main(creator: Address): [UInt64] {
         let contentEditions = cc.getContentEditions(contentID: contentID)
         for setID in contentEditions {
             let set = cc.getSetMetadata(setID: setID)
-            if (set.momentIDs.containsKey(contentID)) {
-                moments.append(set.momentIDs[contentID]!)
+            if (set.contentEditions.containsKey(contentID)) {
+                let ceMoments = set.contentEditions[contentID]!.moments
+                for mID in ceMoments {
+                    moments.append(mID)
+                }
             }
         }
     }

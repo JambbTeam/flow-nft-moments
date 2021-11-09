@@ -17,10 +17,9 @@ transaction(contentMetadata: [String], credits: {String:String}) {
                 source: contentMetadata[2],
                 creator: signer.address,
                 credits: credits,
-                mediaType: contentMetadata[3], 
-                mediaHash: contentMetadata[4], 
-                mediaURI: contentMetadata[5],
-                previewImage: contentMetadata[6])
+                previewImage: contentMetadata[3], 
+                videoURI: contentMetadata[4], 
+                videoHash: contentMetadata[5])
 
         creator.createContent(content: content, creator: proxy)
     }
