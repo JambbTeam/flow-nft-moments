@@ -450,7 +450,7 @@ pub contract Moments: NonFungibleToken {
             let set = self.sets[setID]!
             // get the edition of this content from the set
             let contentEdition = set.contentEditions[contentID]!
-            let serialNumber = UInt64(contentEdition.moments.length + 1)
+            let serialNumber = UInt64(contentEdition.momentIDs.length + 1)
 
             // check that we're not blowing the minting cap for this edition
             assert(serialNumber < set.rarityCaps[contentEdition.rarity]!, message: "The cap for that rarity has already been minted for that Moment.")
@@ -659,7 +659,7 @@ pub contract Moments: NonFungibleToken {
                 retired: false,
                 contentEditionID: set.contentEditions[contentID]!.id,
                 rarity: set.contentEditions[contentID]!.rarity,
-                run: UInt64(set.contentEditions[contentID]!.moments.length))
+                run: UInt64(set.contentEditions[contentID]!.momentIDs.length))
             
             return moment
         }

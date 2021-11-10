@@ -11,7 +11,7 @@ pub fun main(creator: Address): [UInt64] {
         for setID in contentEditions {
             let set = cc.getSetMetadata(setID: setID)
             if (set.contentEditions.containsKey(contentID)) {
-                let ceMoments = set.contentEditions[contentID]!.moments
+                let ceMoments = set.contentEditions[contentID]!.momentIDs
                 for mID in ceMoments {
                     moments.append(mID)
                 }

@@ -66,15 +66,17 @@ flow transactions send ./transactions/creator/createContent.cdc "[\"A Better Nam
 flow transactions send ./transactions/creator/createContent.cdc "[\"Probably a Bad Name\", \"Be\", \"That this Content is Sourced from\", \"previewImg3\", \"videoURI3\", \"0x3\"]" "{}" --signer emulator-creator;
 flow transactions send ./transactions/creator/createContent.cdc "[\"The Last Content... for now\", \"Useful\", \"https://www.oralink.com/to/the/source/content/this?derivative-came-from\", \"previewImg4\", \"videoURI4\", \"0x4\"]" "{}" --signer emulator-creator;
 
-
+# and a series
 flow transactions send ./transactions/creator/createSeries.cdc "Series One" "The First Series, As Described" nil --signer emulator-creator;
 
 # oops we misspelled on create
 flow transactions send ./transactions/creator/createSeries.cdc "Series Twfo" "kek" nil --signer emulator-creator;
 # try to fix it? guess what, CREATOR CANT! only ADMIN can update Series and Sets, as they are more persistent and should rarely need changing
 
-# admin will fix this right up :)
-flow transactions send ./transactions/admin/forceUpdateSeries.cdc "Series Two" "A Better Descrip" nil; 
+# admin will fix this right up :) need to activate his creatorproxy, but only so the scripts work, not because the contract requires it
+# admittedly, some things do require it, so... always keep both on hand. I could bump this higher, but its a learning moment here, maybe.
+flow transactions send ./transactions/admin/registerCreator.cdc 0xf8d6e0586b0a20c7;
+flow transactions send ./transactions/admin/forceUpdateSeries.cdc 2 "Series Two" "A Better Descrip" nil; 
 
 # lets make three Sets
 flow transactions send ./transactions/creator/createSet.cdc "One Set" "OneDescrip" nil nil --signer emulator-creator;
@@ -169,7 +171,6 @@ flow transactions send ./transactions/creator/updateContent.cdc 2 "[\"regularly 
 flow transactions send ./transactions/creator/updateContent.cdc 3 "[\"\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-user
 
 # see: funny enough it doesnt work for the admin, THROUGH THE CC, that is!
-flow transactions send ./transactions/admin/registerCreator.cdc 0xf8d6e0586b0a20c7;
 flow transactions send ./transactions/creator/updateContent.cdc 3 "[\"\", \"\", \"\", \"\", \"\", \"\"]" "{}" --signer emulator-account
 
 # how did these moments shape up?

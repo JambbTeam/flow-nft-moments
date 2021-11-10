@@ -1,7 +1,7 @@
 import NonFungibleToken from "../../contracts/standard/NonFungibleToken.cdc"
 import Moments from "../../contracts/Moments.cdc"
 
-transaction(seriesID: UInt64, name: String, art: String, description: String) {
+transaction(seriesID: UInt64, name: String, description: String, art: String?) {
     prepare(signer: AuthAccount) {
         let ccProxy = signer.borrow<&Moments.CreatorProxy>(from: Moments.CreatorProxyStoragePath)
             ?? panic("cannot get a valid creatorproxy resource for the signer")
@@ -13,11 +13,11 @@ transaction(seriesID: UInt64, name: String, art: String, description: String) {
         let series = Moments.SeriesMetadata(
                 id: seriesID,
                 name: name,
-                art: art,
-                description: description)
+                description: description,
+                art: art)
         
         // set the vars too
-        set.contentIDs = oldSeries.contentIDs
+        series.contentIDs = oldSeries.contentIDs
 
         let admin = adminProxy.borrowSudo()
         admin.updateSeriesMetadata(series: series)
