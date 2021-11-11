@@ -23,7 +23,7 @@ transaction(contentID: UInt64, contentMetadata: [String], credits: {String:Strin
                 videoURI: contentMetadata[4], 
                 videoHash: contentMetadata[5])
 
-        let admin = adminProxy.borrowSudo()!
+        let admin = adminProxy.borrowSudo()
         admin.updateContentMetadata(content:content)
     }
 }

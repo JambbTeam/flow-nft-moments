@@ -13,9 +13,9 @@ transaction(setID: UInt64, name: String, art: String, description: String) {
         let set = Moments.SetMetadata(
                 id: setID,
                 name: name,
-                art: art,
                 description: description,
-                rarityCaps: oldSet.rarityCaps)
+                rarityCaps: oldSet.rarityCaps,
+                art: art)
         // set the vars too
         set.contentEditions = oldSet.contentEditions
         set.retired = oldSet.retired
