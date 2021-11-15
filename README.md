@@ -25,6 +25,14 @@ In the demo laid out below, I create 2 Series, 3 Sets, and add the Content to bo
 ### Prior Design
 In the original design, we restricted Sets to _specific_ Series, they were dependents, however we have opened up that restriction and made the requirement only that Content be added distinctly to a given Set and Series combination in order to create a ContentEdition from which to mint Moments.
 
+## Contract Addresses
+`Moments.cdc`
+
+| Network | Contract Address     |
+|---------|----------------------|
+| Testnet | `0xe94a6e229293f196` |
+| Mainnet | `TBD` |
+
 ## Testing
 Note: Demo tx's written using Emulator accounts in Flow.json
 ```
