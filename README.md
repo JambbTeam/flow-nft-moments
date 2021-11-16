@@ -31,7 +31,7 @@ In the original design, we restricted Sets to _specific_ Series, they were depen
 | Network | Contract Address     |
 |---------|----------------------|
 | Testnet | `0xe94a6e229293f196` |
-| Mainnet | `TBD` |
+| Mainnet | `0xd4ad4740ee426334` |
 
 ## Testing
 Note: Demo tx's written using Emulator accounts in Flow.json
