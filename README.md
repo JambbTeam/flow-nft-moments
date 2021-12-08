@@ -115,6 +115,8 @@ flow transactions send ./transactions/creator/mintMoment.cdc 1 1 1 --signer emul
 
 # this works
 flow transactions send ./transactions/creator/mintMoment.cdc 3 1 1 --signer emulator-creator;
+# and the exclusive
+flow transactions send ./transactions/creator/mintMoment.cdc 3 1 3 --signer emulator-creator;
 
 # some things that wont work...
 # flow transactions send ./transactions/creator/mintMoment.cdc 1 1 2 --signer emulator-creator; # not in series 2!
